@@ -9,9 +9,11 @@ const EDITOR_PLACEHOLDER =
  * Menyusun dokumen srcdoc untuk iframe sandbox.
  *
  * Urutan eksekusi di dalam frame:
- *   1. <style>  (style.css)
- *   2. script capture  (console + error hook)
- *   3. kode mahasiswa  (app.js)
+ *   1. script capture  (console + error hook) — PALING AWAL, dieksekusi
+ *      sebelum kode mahasiswa mana pun sehingga console.log dari tag
+ *      <script> inline milik mahasiswa juga tertangkap.
+ *   2. <style>  (style.css)
+ *   3. kode mahasiswa  (index.html + app.js)
  *   4. script harness  (evaluasi objektif + kirim "ready")
  */
 export function buildSrcdoc(files: FileMap, nonce: string): string {
@@ -24,7 +26,7 @@ export function buildSrcdoc(files: FileMap, nonce: string): string {
   const harnessScript = `<script>\n${buildHarnessScript(nonce)}\n</script>`;
   const styleTag = css.trim() !== "" ? `<style>\n${escapeTagCloser(css, "style")}\n</style>` : "";
 
-  const scripts = [captureScript, userScript, harnessScript].filter(Boolean).join("\n");
+  const tailScripts = [userScript, harnessScript].filter(Boolean).join("\n");
 
   /*
    * Fragmen HTML (tanpa <html>) sengaja TIDAK dibungkus doctype/struktur
@@ -35,17 +37,25 @@ export function buildSrcdoc(files: FileMap, nonce: string): string {
    * lengkap, dan justru mengajarkan pentingnya struktur dokumen.
    */
   if (!/<html[\s>]/i.test(html)) {
-    return [styleTag, html, scripts].filter(Boolean).join("\n");
+    return [captureScript, styleTag, html, tailScripts].filter(Boolean).join("\n");
   }
 
   let output = html;
+
+  // Capture harus berjalan paling awal: setelah <head> bila ada, jika tidak
+  // setelah <!DOCTYPE>, dan sebagai upaya terakhir di paling atas dokumen.
+  output =
+    injectAfter(output, /<head[^>]*>/i, captureScript) ??
+    injectAfter(output, /<!DOCTYPE[^>]*>/i, captureScript) ??
+    captureScript + "\n" + output;
+
   if (styleTag !== "") {
     output =
       injectBefore(output, /<\/head>/i, styleTag) ??
       injectBefore(output, /<body[^>]*>/i, styleTag) ??
       styleTag + "\n" + output;
   }
-  output = injectBefore(output, /<\/body>/i, scripts) ?? output + "\n" + scripts;
+  output = injectBefore(output, /<\/body>/i, tailScripts) ?? output + "\n" + tailScripts;
   return output;
 }
 
@@ -54,6 +64,14 @@ function injectBefore(source: string, marker: RegExp, content: string): string |
   const match = marker.exec(source);
   if (!match || match.index === undefined) return null;
   return source.slice(0, match.index) + content + "\n" + source.slice(match.index);
+}
+
+function injectAfter(source: string, marker: RegExp, content: string): string | null {
+  if (content === "") return source;
+  const match = marker.exec(source);
+  if (!match || match.index === undefined) return null;
+  const end = match.index + match[0].length;
+  return source.slice(0, end) + "\n" + content + source.slice(end);
 }
 
 /**

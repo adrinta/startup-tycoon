@@ -5,7 +5,11 @@ import { buildCaptureScript, buildHarnessScript } from "@/features/sandbox/harne
 describe("buildSrcdoc", () => {
   it("fragmen HTML tidak dibungkus doctype buatan agar audit jujur", () => {
     const output = buildSrcdoc({ "index.html": "<h1>Halo Dunia</h1>" }, "nonce-123");
-    expect(output.trimStart().startsWith("<h1>Halo Dunia</h1>")).toBe(true);
+    // Capture script boleh berada di paling awal, tetapi konten pengguna
+    // tidak boleh dibungkus struktur (doctype/html) buatan.
+    expect(output.trimStart().startsWith("<script>")).toBe(true);
+    expect(output).toContain("<h1>Halo Dunia</h1>");
+    expect(output).not.toContain("<html");
     expect(output).toContain("nonce-123");
     expect(output).toContain("validation-result");
   });
@@ -24,7 +28,7 @@ describe("buildSrcdoc", () => {
     expect(doctypeCount).toBe(1);
   });
 
-  it("menyuntikkan style ke dalam head dan script ke akhir body", () => {
+  it("menyuntikkan style ke dalam head, capture paling awal, dan script ke akhir body", () => {
     const fullDoc =
       '<!DOCTYPE html><html><head><title>X</title></head><body><h1>Y</h1></body></html>';
     const output = buildSrcdoc(
@@ -37,6 +41,9 @@ describe("buildSrcdoc", () => {
     // Harness evaluasi harus dieksekusi paling akhir.
     expect(output.indexOf("validation-result")).toBeLessThan(output.indexOf("</body>"));
     expect(output.indexOf("console.log(1)")).toBeLessThan(output.indexOf("EVALUATE"));
+    // Capture (console hook) harus aktif sebelum kode mahasiswa mana pun.
+    expect(output.indexOf("__stSend")).toBeGreaterThan(-1);
+    expect(output.indexOf("__stSend")).toBeLessThan(output.indexOf("console.log(1)"));
   });
 
   it("meng-escape </script> di dalam kode pengguna", () => {

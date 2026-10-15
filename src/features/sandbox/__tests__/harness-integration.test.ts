@@ -91,4 +91,32 @@ describe("pipeline sandbox end-to-end (jsdom)", () => {
     const failed = results.filter((result) => !result.passed);
     expect(failed.map((result) => result.id)).toEqual([]);
   });
+
+  it("console.log dari <script> inline milik mahasiswa ikut tertangkap", async () => {
+    const html = [
+      "<!DOCTYPE html>",
+      '<html lang="id"><head><title>Project X</title></head>',
+      "<body><h1>Project X</h1>",
+      "<script>console.log('halo dari inline');</script>",
+      "</body></html>",
+    ].join("\n");
+
+    const srcdoc = buildSrcdoc({ "index.html": html }, "nonce-console");
+    const dom = new JSDOM(srcdoc, { runScripts: "dangerously" });
+
+    const texts = await new Promise<string[]>((resolve) => {
+      const collected: string[] = [];
+      dom.window.addEventListener("message", (event) => {
+        const data = event.data as { __st?: boolean; type?: string; text?: string };
+        if (!data || data.__st !== true) return;
+        if (data.type === "console" && typeof data.text === "string") {
+          collected.push(data.text);
+        }
+      });
+      // postMessage bersifat async: beri kesempatan event loop menyelesaikan.
+      setTimeout(() => resolve(collected), 300);
+    });
+
+    expect(texts.some((text) => text.includes("halo dari inline"))).toBe(true);
+  });
 });
