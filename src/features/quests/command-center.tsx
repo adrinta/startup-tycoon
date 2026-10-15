@@ -1,0 +1,422 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { Rocket } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Quest, QuestFileMap } from "@/content/quests/schema";
+import { CodexPanel } from "@/features/codex/codex-panel";
+import { FileTabs } from "@/features/editor/file-tabs";
+import { gameEvents } from "@/features/game/events";
+import { GamePanel } from "@/features/game/game-panel";
+import { StatsHud } from "@/features/game/stats-hud";
+import { ObjectivesChecklist, type RunStatus } from "@/features/quests/objectives-checklist";
+import { QuestBrief } from "@/features/quests/quest-brief";
+import { QuestTicketList } from "@/features/quests/quest-ticket-list";
+import { RewardDialog } from "@/features/quests/reward-dialog";
+import { ConsolePanel } from "@/features/sandbox/console-panel";
+import { SandboxFrame } from "@/features/sandbox/sandbox-frame";
+import {
+  type ConsoleEntry,
+  type ObjectiveResult,
+} from "@/features/validation/types";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { questRepository } from "@/lib/services/quest-repository";
+import { localProgressRepository } from "@/lib/services/progress-repository";
+import {
+  useGameStore,
+  useGameStoreHydrated,
+  type QuestOutcome,
+} from "@/lib/stores/game-store";
+import { cn } from "@/lib/utils";
+
+const CodeEditor = dynamic(
+  () => import("@/features/editor/code-editor").then((mod) => mod.CodeEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center bg-[#0b0f16] font-mono text-[11px] text-muted-foreground">
+        Menyiapkan editor kode…
+      </div>
+    ),
+  },
+);
+
+const LANGUAGE_BY_FILE: Record<string, string> = {
+  "index.html": "html",
+  "style.css": "css",
+  "app.js": "javascript",
+  "index.php": "php",
+};
+
+const AUTO_RUN_DELAY_MS = 1000;
+const RUN_TIMEOUT_MS = 3000;
+
+/**
+ * The Command Center — tiga panel: ruangan game (kiri), editor (tengah),
+ * preview + audit + Holo-Codex (kanan).
+ */
+export function CommandCenter() {
+  const hydrated = useGameStoreHydrated();
+  const completedQuestIds = useGameStore((state) => state.completedQuestIds);
+  const quests = useMemo(() => questRepository.list(), []);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [workspaceEpoch, setWorkspaceEpoch] = useState(0);
+  const [reward, setReward] = useState<{ outcome: QuestOutcome; quest: Quest } | null>(null);
+
+  // Misi aktif = pilihan pemain, atau misi pertama yang bisa dimainkan.
+  const effectiveId = selectedId ?? questRepository.firstPlayable(completedQuestIds);
+  const quest = questRepository.getById(effectiveId);
+
+  if (!hydrated || !quest) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
+          Memuat garasi…
+        </div>
+      </div>
+    );
+  }
+
+  const nextQuestId = reward ? (questRepository.getNext(reward.quest.id)?.id ?? null) : null;
+
+  return (
+    <div className="flex h-screen min-w-[1200px] flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex shrink-0 items-center justify-between border-b border-border/60 bg-black/30 px-4 py-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-7 w-7 items-center justify-center rounded border border-primary/40 bg-primary/10 font-mono text-[13px] font-bold text-primary">
+            S
+          </div>
+          <div>
+            <div className="text-[13px] font-semibold tracking-[0.15em]">
+              STARTUP <span className="text-primary">TYCOON</span>
+            </div>
+            <div className="font-mono text-[9.5px] uppercase tracking-[0.25em] text-muted-foreground">
+              {quest.chapter} · {quest.location}
+            </div>
+          </div>
+        </div>
+        <StatsHud
+          onAfterReset={() => {
+            setSelectedId(null);
+            setWorkspaceEpoch((epoch) => epoch + 1);
+          }}
+        />
+      </header>
+
+      <QuestWorkspace
+        key={`${quest.id}:${workspaceEpoch}`}
+        quest={quest}
+        quests={quests}
+        completedQuestIds={completedQuestIds}
+        onSelectQuest={setSelectedId}
+        onReward={setReward}
+      />
+
+      <RewardDialog
+        open={reward !== null}
+        quest={reward?.quest ?? null}
+        outcome={reward?.outcome ?? null}
+        nextQuestId={nextQuestId}
+        onClose={() => setReward(null)}
+        onNextQuest={(questId) => {
+          setReward(null);
+          setSelectedId(questId);
+        }}
+      />
+    </div>
+  );
+}
+
+interface QuestWorkspaceProps {
+  quest: Quest;
+  quests: Quest[];
+  completedQuestIds: string[];
+  onSelectQuest: (questId: string) => void;
+  onReward: (reward: { outcome: QuestOutcome; quest: Quest }) => void;
+}
+
+/**
+ * Ruang kerja satu misi. Di-remount (via `key`) setiap kali misi berganti,
+ * sehingga seluruh state (draft, hasil audit, console, token eksekusi)
+ * otomatis segar tanpa sinkronisasi effect.
+ */
+function QuestWorkspace({
+  quest,
+  quests,
+  completedQuestIds,
+  onSelectQuest,
+  onReward,
+}: QuestWorkspaceProps) {
+  const [files, setFiles] = useState<QuestFileMap>(() => {
+    const stored = useGameStore.getState().drafts[quest.id];
+    return { ...quest.starterFiles, ...(stored ?? {}) };
+  });
+  const [activeFile, setActiveFile] = useState(
+    () => Object.keys(quest.starterFiles)[0] ?? "index.html",
+  );
+  // runToken mulai dari 1: pratinjau otomatis berjalan begitu misi dibuka.
+  const [runToken, setRunToken] = useState(1);
+  const [status, setStatus] = useState<RunStatus>("idle");
+  const [results, setResults] = useState<ObjectiveResult[] | null>(null);
+  const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
+  const [rightTab, setRightTab] = useState<"preview" | "console" | "codex">("preview");
+
+  const runModeRef = useRef<"auto" | "deploy">("auto");
+  const autoRunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const completed = completedQuestIds.includes(quest.id);
+
+  useEffect(() => {
+    gameEvents.emit("quest:started", { questId: quest.id, title: quest.title });
+  }, [quest.id, quest.title]);
+
+  useEffect(() => {
+    return () => {
+      if (autoRunTimerRef.current) clearTimeout(autoRunTimerRef.current);
+    };
+  }, []);
+
+  const scheduleAutoRun = useCallback(() => {
+    if (autoRunTimerRef.current) clearTimeout(autoRunTimerRef.current);
+    autoRunTimerRef.current = setTimeout(() => {
+      runModeRef.current = "auto";
+      setConsoleEntries([]);
+      setRunToken((token) => token + 1);
+    }, AUTO_RUN_DELAY_MS);
+  }, []);
+
+  function handleEditorChange(nextValue: string) {
+    const nextFiles = { ...files, [activeFile]: nextValue };
+    setFiles(nextFiles);
+    localProgressRepository.saveDraft(quest.id, nextFiles);
+    scheduleAutoRun();
+  }
+
+  const handleDeploy = useCallback(() => {
+    if (autoRunTimerRef.current) clearTimeout(autoRunTimerRef.current);
+    runModeRef.current = "deploy";
+    setConsoleEntries([]);
+    setStatus("running");
+    setRunToken((token) => token + 1);
+  }, []);
+
+  /* Pintasan keyboard: Ctrl/Cmd + Enter untuk deploy. */
+  useEffect(() => {
+    function handleKeydown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        handleDeploy();
+      }
+    }
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  }, [handleDeploy]);
+
+  const handleConsole = useCallback((entry: ConsoleEntry) => {
+    setConsoleEntries((current) => [...current, entry]);
+  }, []);
+
+  const handleRuntimeError = useCallback((message: string) => {
+    setConsoleEntries((current) => [...current, { level: "error", text: message }]);
+  }, []);
+
+  const handleTimeout = useCallback(() => {
+    setConsoleEntries((current) => [
+      ...current,
+      {
+        level: "error",
+        text: "Eksekusi dihentikan: kode berjalan lebih dari 3 detik (kemungkinan infinite loop).",
+      },
+    ]);
+    if (runModeRef.current === "deploy") {
+      setStatus("timeout");
+      gameEvents.emit("bug:spawn", { questId: quest.id });
+    }
+  }, [quest.id]);
+
+  const handleValidationResult = useCallback(
+    (incoming: ObjectiveResult[]) => {
+      setResults(incoming);
+
+      const allPassed = incoming.length > 0 && incoming.every((result) => result.passed);
+      if (runModeRef.current !== "deploy") return;
+
+      if (allPassed) {
+        const outcome = localProgressRepository.completeQuest({
+          id: quest.id,
+          rewards: quest.rewards,
+        });
+        setStatus("passed");
+        setRightTab("preview");
+
+        if (outcome.firstTime) {
+          gameEvents.emit("quest:completed", {
+            questId: quest.id,
+            title: quest.title,
+            visualHook: quest.visualHook,
+            visualNote: quest.visualNote,
+            coins: outcome.coins,
+            xp: outcome.xp,
+          });
+          onReward({ outcome, quest });
+        }
+      } else {
+        const failedCount = incoming.filter((result) => !result.passed).length;
+        setStatus("failed");
+        gameEvents.emit("quest:failed", { questId: quest.id, failedCount });
+        gameEvents.emit("bug:spawn", { questId: quest.id });
+      }
+    },
+    [quest, onReward],
+  );
+
+  const allObjectivesPassed =
+    results !== null && results.length > 0 && results.every((result) => result.passed);
+
+  const fileNames = Object.keys(quest.starterFiles);
+
+  return (
+    <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(430px,1fr)_minmax(400px,44%)]">
+      <aside className="flex min-h-0 flex-col border-r border-border/60">
+        <GamePanel />
+        <QuestTicketList
+          quests={quests}
+          selectedId={quest.id}
+          completedQuestIds={completedQuestIds}
+          onSelect={onSelectQuest}
+        />
+      </aside>
+
+      <main className="flex min-h-0 flex-col border-r border-border/60">
+        <div className="scroll-slim max-h-[36%] shrink-0 overflow-y-auto border-b border-border/60">
+          <QuestBrief quest={quest} completed={completed} />
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col">
+          <FileTabs files={fileNames} active={activeFile} onSelect={setActiveFile} />
+          <div className="min-h-0 flex-1">
+            <CodeEditor
+              value={files[activeFile] ?? ""}
+              language={LANGUAGE_BY_FILE[activeFile] ?? "html"}
+              onChange={handleEditorChange}
+            />
+          </div>
+
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/60 bg-black/30 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <StatusChip status={status} completed={completed} />
+              {allObjectivesPassed && !completed && status !== "passed" && (
+                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+                  ✓ semua objektif siap — deploy untuk klaim
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="hidden font-mono text-[10px] text-muted-foreground/70 xl:inline">
+                Ctrl/⌘ + Enter
+              </span>
+              <Button
+                onClick={handleDeploy}
+                disabled={status === "running"}
+                className="gap-2 bg-primary font-semibold text-primary-foreground shadow-[0_0_18px] shadow-primary/30 hover:bg-primary/85"
+              >
+                <Rocket className="h-4 w-4" />
+                Deploy Code
+              </Button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <section className="flex min-h-0 flex-col">
+        <div className="scroll-slim max-h-[42%] shrink-0 overflow-y-auto border-b border-border/60">
+          <ObjectivesChecklist
+            objectives={quest.objectives}
+            results={results}
+            status={status}
+            completed={completed}
+          />
+        </div>
+
+        <Tabs
+          value={rightTab}
+          onValueChange={(value) => setRightTab(value as typeof rightTab)}
+          className="flex min-h-0 flex-1 flex-col gap-0"
+        >
+          <div className="shrink-0 border-b border-border/60 px-2 pt-1.5">
+            <TabsList variant="line" className="h-8 w-full justify-start">
+              <TabsTrigger value="preview" className="flex-none px-3">
+                Preview
+              </TabsTrigger>
+              <TabsTrigger value="console" className="flex-none px-3">
+                Console{consoleEntries.length > 0 ? ` (${consoleEntries.length})` : ""}
+              </TabsTrigger>
+              <TabsTrigger value="codex" className="flex-none px-3">
+                Holo-Codex
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="preview" className="min-h-0 flex-1 overflow-hidden">
+            <SandboxFrame
+              files={files}
+              objectives={quest.objectives}
+              runToken={runToken}
+              timeoutMs={RUN_TIMEOUT_MS}
+              onConsole={handleConsole}
+              onRuntimeError={handleRuntimeError}
+              onValidationResult={handleValidationResult}
+              onTimeout={handleTimeout}
+            />
+          </TabsContent>
+          <TabsContent value="console" className="min-h-0 flex-1 overflow-hidden">
+            <ConsolePanel entries={consoleEntries} />
+          </TabsContent>
+          <TabsContent value="codex" className="min-h-0 flex-1 overflow-hidden">
+            <CodexPanel codexRefs={quest.codexRefs} />
+          </TabsContent>
+        </Tabs>
+      </section>
+    </div>
+  );
+}
+
+function StatusChip({ status, completed }: { status: RunStatus; completed: boolean }) {
+  const base =
+    "rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider";
+  if (status === "running") {
+    return (
+      <span className={cn(base, "border-primary/40 bg-primary/10 text-primary")}>
+        menjalankan…
+      </span>
+    );
+  }
+  if (status === "passed") {
+    return (
+      <span className={cn(base, "border-emerald-500/40 bg-emerald-500/10 text-emerald-300")}>
+        {completed ? "selesai · reward diklaim" : "lolos audit"}
+      </span>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <span className={cn(base, "border-red-500/40 bg-red-500/10 text-red-300")}>
+        audit gagal
+      </span>
+    );
+  }
+  if (status === "timeout") {
+    return (
+      <span className={cn(base, "border-amber-500/40 bg-amber-500/10 text-amber-300")}>
+        timeout
+      </span>
+    );
+  }
+  return (
+    <span className={cn(base, "border-border/70 bg-white/[0.03] text-muted-foreground")}>
+      {completed ? "selesai" : "menunggu deploy"}
+    </span>
+  );
+}
