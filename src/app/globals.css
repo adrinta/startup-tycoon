@@ -49,11 +49,48 @@
 }
 
 /*
- * Tema "Modern Dark Tech / Cyberpunk Isometric".
- * Aplikasi selalu berjalan dalam mode gelap, sehingga :root dan .dark
- * memakai palet yang sama agar tidak ada kedipan putih saat memuat.
+ * Tema "Modern Tech, Light" — bersih dan cerah dengan aksen cyan,
+ * tetap terasa profesional/industri (bukan kekanak-kanakan).
+ * Palet Cyberpunk gelap lama tetap tersimpan pada blok `.dark`
+ * sehingga tema gelap bisa dihidupkan kembali kapan pun dengan
+ * menambahkan kelas `dark` pada elemen <html>.
  */
-:root,
+:root {
+  --background: oklch(0.98 0.004 240);
+  --foreground: oklch(0.27 0.03 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.27 0.03 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.27 0.03 250);
+  --primary: oklch(0.55 0.13 235);
+  --primary-foreground: oklch(0.99 0.005 240);
+  --secondary: oklch(0.95 0.008 240);
+  --secondary-foreground: oklch(0.32 0.03 250);
+  --muted: oklch(0.955 0.008 240);
+  --muted-foreground: oklch(0.52 0.02 250);
+  --accent: oklch(0.94 0.014 235);
+  --accent-foreground: oklch(0.3 0.03 250);
+  --destructive: oklch(0.57 0.2 27);
+  --border: oklch(0.88 0.01 250);
+  --input: oklch(0.88 0.01 250);
+  --ring: oklch(0.55 0.13 235 / 45%);
+  --chart-1: oklch(0.55 0.13 235);
+  --chart-2: oklch(0.55 0.18 295);
+  --chart-3: oklch(0.55 0.14 160);
+  --chart-4: oklch(0.65 0.15 85);
+  --chart-5: oklch(0.58 0.19 25);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.99 0.003 240);
+  --sidebar-foreground: oklch(0.27 0.03 250);
+  --sidebar-primary: oklch(0.55 0.13 235);
+  --sidebar-primary-foreground: oklch(0.99 0.005 240);
+  --sidebar-accent: oklch(0.94 0.014 235);
+  --sidebar-accent-foreground: oklch(0.3 0.03 250);
+  --sidebar-border: oklch(0.88 0.01 250);
+  --sidebar-ring: oklch(0.55 0.13 235 / 45%);
+}
+
+/* Palet gelap "Cyberpunk Isometric" (opsional, tidak aktif secara default). */
 .dark {
   --background: oklch(0.17 0.022 252);
   --foreground: oklch(0.93 0.012 240);
@@ -78,7 +115,6 @@
   --chart-3: oklch(0.78 0.14 155);
   --chart-4: oklch(0.82 0.15 85);
   --chart-5: oklch(0.68 0.18 25);
-  --radius: 0.625rem;
   --sidebar: oklch(0.19 0.024 252);
   --sidebar-foreground: oklch(0.93 0.012 240);
   --sidebar-primary: oklch(0.8 0.135 205);
@@ -95,24 +131,27 @@
   }
   html {
     @apply font-sans;
+    color-scheme: light;
+  }
+  .dark {
     color-scheme: dark;
   }
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(ellipse 70% 45% at 50% -15%, oklch(0.8 0.135 205 / 0.07), transparent),
-      radial-gradient(ellipse 55% 40% at 100% 110%, oklch(0.7 0.16 295 / 0.05), transparent);
+      radial-gradient(ellipse 70% 45% at 50% -15%, oklch(0.55 0.13 235 / 0.08), transparent),
+      radial-gradient(ellipse 55% 40% at 100% 110%, oklch(0.6 0.15 295 / 0.06), transparent);
     background-attachment: fixed;
   }
   ::selection {
-    background: oklch(0.8 0.135 205 / 30%);
+    background: oklch(0.55 0.13 235 / 22%);
   }
 }
 
-/* Scrollbar tipis bergaya terminal untuk panel-panel gim. */
+/* Scrollbar tipis untuk panel-panel gim. */
 .scroll-slim {
   scrollbar-width: thin;
-  scrollbar-color: oklch(0.45 0.03 250 / 70%) transparent;
+  scrollbar-color: oklch(0.75 0.02 250) transparent;
 }
 .scroll-slim::-webkit-scrollbar {
   width: 8px;
@@ -122,9 +161,9 @@
   background: transparent;
 }
 .scroll-slim::-webkit-scrollbar-thumb {
-  background: oklch(0.45 0.03 250 / 70%);
+  background: oklch(0.78 0.02 250);
   border-radius: 999px;
 }
 .scroll-slim::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.6 0.08 210 / 80%);
+  background: oklch(0.62 0.06 235);
 }

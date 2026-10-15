@@ -69,7 +69,7 @@ function ArticleButton({
       className={
         highlight
           ? "w-full rounded-md border border-primary/35 bg-primary/[0.06] px-3 py-2 text-left transition-colors hover:bg-primary/[0.12]"
-          : "w-full rounded-md border border-border/60 bg-white/[0.02] px-3 py-2 text-left transition-colors hover:bg-white/[0.06]"
+          : "w-full rounded-md border border-border/70 bg-card px-3 py-2 text-left transition-colors hover:bg-muted/60"
       }
     >
       <div className="text-[12px] font-medium leading-tight">{article.title}</div>
@@ -80,7 +80,7 @@ function ArticleButton({
         {article.tags.map((tag) => (
           <span
             key={tag}
-            className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground"
+            className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground"
           >
             {tag}
           </span>
@@ -106,7 +106,7 @@ function CodexArticleView({ article, onBack }: { article: CodexArticle; onBack: 
             <h4 className="text-[12.5px] font-semibold text-primary/90">{section.heading}</h4>
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">{section.body}</p>
             {section.code && (
-              <pre className="scroll-slim overflow-x-auto rounded-md border border-border/70 bg-black/50 p-2.5 font-mono text-[10.5px] leading-relaxed text-emerald-100/90">
+              <pre className="scroll-slim overflow-x-auto rounded-md border border-border bg-muted/60 p-2.5 font-mono text-[10.5px] leading-relaxed text-foreground/90">
                 {section.code}
               </pre>
             )}

@@ -142,7 +142,7 @@ export function SandboxFrame({
           className="h-full w-full border-0 bg-white"
         />
       ) : (
-        <div className="flex h-full flex-col items-center justify-center gap-3 bg-[#0b0f16] p-8 text-center">
+        <div className="flex h-full flex-col items-center justify-center gap-3 bg-muted/40 p-8 text-center">
           <div className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
             Preview Standby
           </div>
@@ -154,8 +154,8 @@ export function SandboxFrame({
       )}
 
       {running && (
-        <div className="pointer-events-none absolute inset-0 flex items-start justify-end bg-black/20 p-2">
-          <span className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-black/70 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary">
+        <div className="pointer-events-none absolute inset-0 flex items-start justify-end bg-white/40 p-2">
+          <span className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-white/95 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary shadow-sm">
             <Loader2 className="h-3 w-3 animate-spin" />
             Menjalankan…
           </span>

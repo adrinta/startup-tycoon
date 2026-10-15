@@ -51,17 +51,17 @@ export default function HomePage() {
     <div className="relative flex min-h-screen flex-col overflow-hidden">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        className="pointer-events-none absolute inset-0 opacity-[0.5]"
         style={{
           backgroundImage:
-            "linear-gradient(oklch(0.8 0.14 205 / 0.06) 1px, transparent 1px), linear-gradient(90deg, oklch(0.8 0.14 205 / 0.06) 1px, transparent 1px)",
+            "linear-gradient(oklch(0.55 0.13 235 / 0.07) 1px, transparent 1px), linear-gradient(90deg, oklch(0.55 0.13 235 / 0.07) 1px, transparent 1px)",
           backgroundSize: "44px 44px",
         }}
       />
 
       <header className="relative z-10 flex items-center justify-between px-8 py-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded border border-primary/40 bg-primary/10 font-mono text-sm font-bold text-primary shadow-[0_0_16px] shadow-primary/30">
+          <div className="flex h-8 w-8 items-center justify-center rounded border border-primary/40 bg-primary/10 font-mono text-sm font-bold text-primary shadow-[0_4px_14px_-4px] shadow-primary/40">
             S
           </div>
           <span className="text-sm font-semibold tracking-[0.2em]">
@@ -86,7 +86,7 @@ export default function HomePage() {
             Belajar Web Development
             <br />
             dengan Membangun{" "}
-            <span className="text-primary drop-shadow-[0_0_18px_oklch(0.8_0.14_205/0.5)]">
+            <span className="text-primary drop-shadow-[0_2px_14px_oklch(0.55_0.13_235/0.25)]">
               Startup Unicorn
             </span>
           </h1>
@@ -99,7 +99,7 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg" className="gap-2 shadow-[0_0_24px] shadow-primary/30">
+            <Button asChild size="lg" className="gap-2 shadow-[0_8px_24px_-6px] shadow-primary/40">
               <Link href="/play">
                 Mulai dari Garasi <ArrowRight className="h-4 w-4" />
               </Link>
@@ -116,7 +116,7 @@ export default function HomePage() {
                   className={
                     phase.active
                       ? "rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-center"
-                      : "rounded-md border border-border/60 bg-white/[0.02] px-3 py-1.5 text-center opacity-60"
+                      : "rounded-md border border-border bg-muted/50 px-3 py-1.5 text-center opacity-70"
                   }
                 >
                   <div className="font-mono text-[10px] uppercase tracking-[0.2em]">

@@ -8,36 +8,36 @@ export interface CodeEditorProps {
   onChange: (value: string) => void;
 }
 
-const THEME_NAME = "startup-tycoon-dark";
+const THEME_NAME = "startup-tycoon-light";
 
 const handleBeforeMount: BeforeMount = (monaco: Monaco) => {
   monaco.editor.defineTheme(THEME_NAME, {
-    base: "vs-dark",
+    base: "vs",
     inherit: true,
     rules: [
-      { token: "comment", foreground: "5b7186", fontStyle: "italic" },
-      { token: "tag", foreground: "67e8f9" },
-      { token: "attribute.name", foreground: "c4b5fd" },
-      { token: "attribute.value", foreground: "fbbf24" },
-      { token: "string", foreground: "86efac" },
-      { token: "keyword", foreground: "f0abfc" },
-      { token: "number", foreground: "fbbf24" },
+      { token: "comment", foreground: "64748b", fontStyle: "italic" },
+      { token: "tag", foreground: "0e7490" },
+      { token: "attribute.name", foreground: "7c3aed" },
+      { token: "attribute.value", foreground: "b45309" },
+      { token: "string", foreground: "047857" },
+      { token: "keyword", foreground: "a21caf" },
+      { token: "number", foreground: "b45309" },
     ],
     colors: {
-      "editor.background": "#0b0f16",
-      "editor.foreground": "#dbe7f3",
-      "editor.lineHighlightBackground": "#111a26",
-      "editorLineNumber.foreground": "#3d4d63",
-      "editorLineNumber.activeForeground": "#7dd3fc",
-      "editorCursor.foreground": "#22d3ee",
-      "editor.selectionBackground": "#164e6355",
-      "editorIndentGuide.background1": "#15202e",
-      "editorIndentGuide.activeBackground1": "#2b3f56",
-      "editorWidget.background": "#0f1620",
-      "editorWidget.border": "#1e2b3c",
-      "scrollbarSlider.background": "#1e2b3c66",
-      "scrollbarSlider.hoverBackground": "#2b3f5699",
-      "minimap.background": "#0b0f16",
+      "editor.background": "#ffffff",
+      "editor.foreground": "#1e293b",
+      "editor.lineHighlightBackground": "#f1f5f9",
+      "editorLineNumber.foreground": "#94a3b8",
+      "editorLineNumber.activeForeground": "#0284c7",
+      "editorCursor.foreground": "#0284c7",
+      "editor.selectionBackground": "#bae6fd66",
+      "editorIndentGuide.background1": "#e2e8f0",
+      "editorIndentGuide.activeBackground1": "#94a3b8",
+      "editorWidget.background": "#f8fafc",
+      "editorWidget.border": "#e2e8f0",
+      "scrollbarSlider.background": "#94a3b855",
+      "scrollbarSlider.hoverBackground": "#64748b88",
+      "minimap.background": "#ffffff",
     },
   });
 };
@@ -51,7 +51,7 @@ export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
       beforeMount={handleBeforeMount}
       onChange={(next) => onChange(next ?? "")}
       loading={
-        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+        <div className="flex h-full items-center justify-center bg-white text-xs text-muted-foreground">
           Menyiapkan editor…
         </div>
       }

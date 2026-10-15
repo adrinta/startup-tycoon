@@ -37,8 +37,8 @@ export function RewardDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="border-primary/30 sm:max-w-md">
         <DialogHeader className="items-center text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-amber-400/40 bg-amber-400/10">
-            <Trophy className="h-7 w-7 text-amber-300" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-amber-300 bg-amber-50">
+            <Trophy className="h-7 w-7 text-amber-500" />
           </div>
           <DialogTitle className="text-lg">Audit Lolos!</DialogTitle>
           <DialogDescription className="text-center">
@@ -48,19 +48,19 @@ export function RewardDialog({
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-md border border-amber-400/25 bg-amber-400/[0.07] p-3 text-center">
-            <div className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-amber-200/70">
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-center">
+            <div className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-amber-700/80">
               <Coins className="h-3 w-3" /> Revenue
             </div>
-            <div className="mt-1 font-mono text-lg font-semibold text-amber-200">
+            <div className="mt-1 font-mono text-lg font-semibold text-amber-800">
               +{formatNumber(outcome.coins)}
             </div>
           </div>
-          <div className="rounded-md border border-cyan-400/25 bg-cyan-400/[0.07] p-3 text-center">
-            <div className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-200/70">
+          <div className="rounded-md border border-cyan-200 bg-cyan-50 p-3 text-center">
+            <div className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-700/80">
               <TrendingUp className="h-3 w-3" /> XP
             </div>
-            <div className="mt-1 font-mono text-lg font-semibold text-cyan-200">
+            <div className="mt-1 font-mono text-lg font-semibold text-cyan-800">
               +{formatNumber(outcome.xp)}
             </div>
           </div>

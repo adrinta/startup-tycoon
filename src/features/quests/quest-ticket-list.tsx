@@ -45,18 +45,18 @@ export function QuestTicketList({
                 "group flex w-full items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors",
                 selected
                   ? "border-primary/50 bg-primary/10"
-                  : "border-border/50 bg-white/[0.02] hover:border-border hover:bg-white/[0.05]",
-                !unlocked && "cursor-not-allowed opacity-50 hover:border-border/50 hover:bg-white/[0.02]",
+                  : "border-border/60 bg-card hover:border-border hover:bg-muted/60",
+                !unlocked && "cursor-not-allowed opacity-50 hover:border-border/60 hover:bg-card",
               )}
             >
               <span
                 className={cn(
                   "flex h-6 w-6 shrink-0 items-center justify-center rounded font-mono text-[10px]",
                   completed
-                    ? "bg-emerald-500/15 text-emerald-400"
+                    ? "bg-emerald-100 text-emerald-700"
                     : unlocked
                       ? "bg-primary/15 text-primary"
-                      : "bg-white/5 text-muted-foreground",
+                      : "bg-muted text-muted-foreground",
                 )}
               >
                 {quest.id}
@@ -67,7 +67,7 @@ export function QuestTicketList({
                   <span className="truncate text-[12px] font-medium leading-tight">
                     {quest.title}
                   </span>
-                  {quest.isBoss && <Skull className="h-3 w-3 shrink-0 text-red-400" />}
+                  {quest.isBoss && <Skull className="h-3 w-3 shrink-0 text-red-500" />}
                 </span>
                 <span className="mt-0.5 block truncate font-mono text-[10px] text-muted-foreground">
                   {quest.client.name}
@@ -75,7 +75,7 @@ export function QuestTicketList({
               </span>
 
               {completed ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
               ) : unlocked ? (
                 <LockOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 group-hover:text-primary" />
               ) : (

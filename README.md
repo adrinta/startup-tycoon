@@ -14,6 +14,7 @@ Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storylin
 - **Ekonomi lokal** — Revenue (koin) dan Active Users (XP) dengan level perusahaan, tersimpan di `localStorage`.
 - **Holo-Codex** — 7 artikel materi HTML ala W3Schools yang terhubung ke tiap misi.
 - **GamePanel placeholder React** dengan event bus yang sama yang akan dipakai Phaser.js di M2 (`quest:completed`, `bug:spawn`, dst.).
+- **Tema terang** — antarmuka cerah dengan aksen cyan. Palet "Cyberpunk" gelap lama tetap tersimpan pada blok `.dark` di `globals.css`; tambahkan kembali kelas `dark` di `<html>` (`layout.tsx`) bila ingin mengaktifkannya.
 
 ## Menjalankan
 

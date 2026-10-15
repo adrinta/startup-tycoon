@@ -96,7 +96,7 @@ export function GamePanel() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border/60 p-3">
+    <div className="flex flex-col gap-2 border-b border-border/70 p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MapPin className="h-3.5 w-3.5 text-primary" />
@@ -110,7 +110,7 @@ export function GamePanel() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className="flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 font-mono text-[10px] text-red-300"
+              className="flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 font-mono text-[10px] text-red-600"
             >
               <Bug className="h-3 w-3" /> {bugs} bug
             </motion.span>
@@ -127,15 +127,13 @@ export function GamePanel() {
               key={slot.hook}
               animate={{
                 scale: isHighlighted ? 1.06 : 1,
-                opacity: unlocked ? 1 : 0.45,
+                opacity: unlocked ? 1 : 0.5,
               }}
               transition={{ type: "spring", stiffness: 320, damping: 22 }}
               className={cn(
-                "relative flex aspect-square flex-col items-center justify-center gap-1 rounded-md border",
-                unlocked
-                  ? "border-primary/30 bg-primary/[0.06]"
-                  : "border-border/50 bg-white/[0.02] grayscale",
-                isHighlighted && "shadow-[0_0_18px] shadow-primary/40 ring-1 ring-primary/60",
+                "relative flex aspect-square flex-col items-center justify-center gap-1 rounded-md border bg-card",
+                unlocked ? "border-primary/35 bg-primary/[0.06]" : "border-border/70 grayscale",
+                isHighlighted && "shadow-[0_6px_18px] shadow-primary/25 ring-1 ring-primary/50",
               )}
             >
               <span className="text-xl leading-none">{slot.emoji}</span>
@@ -150,9 +148,9 @@ export function GamePanel() {
         })}
       </div>
 
-      <div className="rounded-md border border-border/60 bg-black/30">
-        <div className="flex items-center gap-1.5 border-b border-border/50 px-2.5 py-1.5">
-          <Terminal className="h-3 w-3 text-emerald-400" />
+      <div className="rounded-md border border-border/70 bg-muted/40">
+        <div className="flex items-center gap-1.5 border-b border-border/60 px-2.5 py-1.5">
+          <Terminal className="h-3 w-3 text-emerald-600" />
           <span className="font-mono text-[9.5px] uppercase tracking-[0.25em] text-muted-foreground">
             Umpan Ruangan
           </span>
@@ -167,8 +165,8 @@ export function GamePanel() {
                 className={cn(
                   "font-mono text-[10px] leading-relaxed",
                   entry.tone === "info" && "text-muted-foreground",
-                  entry.tone === "success" && "text-emerald-400",
-                  entry.tone === "danger" && "text-red-400",
+                  entry.tone === "success" && "text-emerald-600",
+                  entry.tone === "danger" && "text-red-600",
                 )}
               >
                 <span className="text-muted-foreground/50">» </span>

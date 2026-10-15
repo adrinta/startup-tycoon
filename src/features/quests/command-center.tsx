@@ -35,7 +35,7 @@ const CodeEditor = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full items-center justify-center bg-[#0b0f16] font-mono text-[11px] text-muted-foreground">
+      <div className="flex h-full items-center justify-center bg-muted/40 font-mono text-[11px] text-muted-foreground">
         Menyiapkan editor kode…
       </div>
     ),
@@ -83,7 +83,7 @@ export function CommandCenter() {
 
   return (
     <div className="flex h-screen min-w-[1200px] flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex shrink-0 items-center justify-between border-b border-border/60 bg-black/30 px-4 py-2">
+      <header className="flex shrink-0 items-center justify-between border-b border-border/70 bg-card/80 px-4 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <div className="flex h-7 w-7 items-center justify-center rounded border border-primary/40 bg-primary/10 font-mono text-[13px] font-bold text-primary">
             S
@@ -304,11 +304,11 @@ function QuestWorkspace({
             />
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/60 bg-black/30 px-3 py-2">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/70 bg-muted/40 px-3 py-2">
             <div className="flex items-center gap-2">
               <StatusChip status={status} completed={completed} />
               {allObjectivesPassed && !completed && status !== "passed" && (
-                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-mono text-[10px] text-emerald-700">
                   ✓ semua objektif siap — deploy untuk klaim
                 </span>
               )}
@@ -320,7 +320,7 @@ function QuestWorkspace({
               <Button
                 onClick={handleDeploy}
                 disabled={status === "running"}
-                className="gap-2 bg-primary font-semibold text-primary-foreground shadow-[0_0_18px] shadow-primary/30 hover:bg-primary/85"
+                className="gap-2 bg-primary font-semibold text-primary-foreground shadow-[0_8px_18px_-6px] shadow-primary/40 hover:bg-primary/85"
               >
                 <Rocket className="h-4 w-4" />
                 Deploy Code
@@ -395,27 +395,27 @@ function StatusChip({ status, completed }: { status: RunStatus; completed: boole
   }
   if (status === "passed") {
     return (
-      <span className={cn(base, "border-emerald-500/40 bg-emerald-500/10 text-emerald-300")}>
+      <span className={cn(base, "border-emerald-200 bg-emerald-50 text-emerald-700")}>
         {completed ? "selesai · reward diklaim" : "lolos audit"}
       </span>
     );
   }
   if (status === "failed") {
     return (
-      <span className={cn(base, "border-red-500/40 bg-red-500/10 text-red-300")}>
+      <span className={cn(base, "border-red-200 bg-red-50 text-red-700")}>
         audit gagal
       </span>
     );
   }
   if (status === "timeout") {
     return (
-      <span className={cn(base, "border-amber-500/40 bg-amber-500/10 text-amber-300")}>
+      <span className={cn(base, "border-amber-200 bg-amber-50 text-amber-700")}>
         timeout
       </span>
     );
   }
   return (
-    <span className={cn(base, "border-border/70 bg-white/[0.03] text-muted-foreground")}>
+    <span className={cn(base, "border-border bg-muted/50 text-muted-foreground")}>
       {completed ? "selesai" : "menunggu deploy"}
     </span>
   );

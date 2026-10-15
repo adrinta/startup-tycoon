@@ -34,15 +34,15 @@ export function QuestBrief({ quest, completed }: QuestBriefProps) {
             </Badge>
           )}
           {completed && (
-            <Badge className="gap-1 bg-emerald-500/15 font-mono text-[10px] text-emerald-400 shadow-[inset_0_0_0_1px] shadow-emerald-500/40">
+            <Badge className="gap-1 bg-emerald-100 font-mono text-[10px] text-emerald-700 shadow-[inset_0_0_0_1px] shadow-emerald-200">
               <CheckCircle2 className="h-3 w-3" /> Selesai
             </Badge>
           )}
           <div className="flex items-center gap-2 font-mono text-[11px]">
-            <span className="flex items-center gap-1 text-amber-300">
+            <span className="flex items-center gap-1 text-amber-600">
               <Coins className="h-3.5 w-3.5" /> +{formatNumber(quest.rewards.coins)}
             </span>
-            <span className="flex items-center gap-1 text-cyan-300">
+            <span className="flex items-center gap-1 text-cyan-600">
               <TrendingUp className="h-3.5 w-3.5" /> +{formatNumber(quest.rewards.xp)} XP
             </span>
           </div>
@@ -67,7 +67,7 @@ export function QuestBrief({ quest, completed }: QuestBriefProps) {
               <span
                 className={cn(
                   "font-mono text-[11px] leading-5",
-                  quest.isBoss ? "text-red-400" : "text-primary/80",
+                  quest.isBoss ? "text-red-600" : "text-primary/80",
                 )}
               >
                 {String(index + 1).padStart(2, "0")}.
@@ -86,7 +86,7 @@ export function QuestBrief({ quest, completed }: QuestBriefProps) {
           {quest.codexRefs.map((ref) => (
             <span
               key={ref}
-              className="rounded border border-border/80 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+              className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
             >
               {ref}
             </span>

@@ -28,31 +28,31 @@ export function StatsHud({ onAfterReset }: StatsHudProps) {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1.5 rounded-md border border-amber-400/25 bg-amber-400/[0.07] px-2.5 py-1.5">
-        <Coins className="h-3.5 w-3.5 text-amber-300" />
+      <div className="flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5">
+        <Coins className="h-3.5 w-3.5 text-amber-600" />
         <div className="leading-none">
-          <div className="font-mono text-[8.5px] uppercase tracking-[0.2em] text-amber-200/70">
+          <div className="font-mono text-[8.5px] uppercase tracking-[0.2em] text-amber-700/80">
             Revenue
           </div>
-          <div className="font-mono text-[12px] font-semibold text-amber-200">
+          <div className="font-mono text-[12px] font-semibold text-amber-800">
             {formatRupiah(revenue)}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 rounded-md border border-cyan-400/25 bg-cyan-400/[0.07] px-2.5 py-1.5">
-        <TrendingUp className="h-3.5 w-3.5 text-cyan-300" />
+      <div className="flex items-center gap-1.5 rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1.5">
+        <TrendingUp className="h-3.5 w-3.5 text-cyan-600" />
         <div className="leading-none">
-          <div className="font-mono text-[8.5px] uppercase tracking-[0.2em] text-cyan-200/70">
+          <div className="font-mono text-[8.5px] uppercase tracking-[0.2em] text-cyan-700/80">
             Active Users
           </div>
-          <div className="font-mono text-[12px] font-semibold text-cyan-200">
+          <div className="font-mono text-[12px] font-semibold text-cyan-800">
             {formatNumber(activeUsers)} XP
           </div>
         </div>
       </div>
 
-      <div className="hidden w-36 flex-col gap-1 rounded-md border border-border/60 bg-white/[0.03] px-2.5 py-1.5 lg:flex">
+      <div className="hidden w-36 flex-col gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 lg:flex">
         <div className="flex items-center justify-between">
           <span className="font-mono text-[8.5px] uppercase tracking-[0.2em] text-muted-foreground">
             Level {levelInfo.level}

@@ -46,7 +46,7 @@ export function ObjectivesChecklist({
       )}
 
       {status === "passed" && (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] text-emerald-300">
+        <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] text-emerald-700">
           <CheckCircle2 className="h-3.5 w-3.5" />
           {completed
             ? "Semua objektif terpenuhi. Misi ini sudah kamu selesaikan!"
@@ -55,14 +55,14 @@ export function ObjectivesChecklist({
       )}
 
       {status === "failed" && (
-        <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-300">
+        <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] text-red-700">
           <XCircle className="h-3.5 w-3.5" />
           Belum lolos audit — periksa objektif merah di bawah.
         </div>
       )}
 
       {status === "timeout" && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">
+        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-700">
           <XCircle className="h-3.5 w-3.5" />
           Eksekusi dihentikan karena melebihi batas waktu (3 detik).
         </div>
@@ -77,9 +77,9 @@ export function ObjectivesChecklist({
               key={objective.id}
               className={cn(
                 "rounded-md border px-2.5 py-1.5 transition-colors",
-                state === "pending" && "border-border/60 bg-white/[0.02]",
-                state === "passed" && "border-emerald-500/25 bg-emerald-500/[0.06]",
-                state === "failed" && "border-red-500/30 bg-red-500/[0.07]",
+                state === "pending" && "border-border/70 bg-muted/40",
+                state === "passed" && "border-emerald-200 bg-emerald-50/80",
+                state === "failed" && "border-red-200 bg-red-50/80",
               )}
             >
               <div className="flex items-start gap-2">
@@ -87,15 +87,15 @@ export function ObjectivesChecklist({
                   <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                 )}
                 {state === "passed" && (
-                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
                 )}
                 {state === "failed" && (
-                  <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-400" />
+                  <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600" />
                 )}
                 <div className="min-w-0">
                   <div className="text-[12px] leading-snug">{objective.label}</div>
                   {state === "failed" && result?.detail && (
-                    <div className="mt-0.5 font-mono text-[10.5px] leading-snug text-red-300/90">
+                    <div className="mt-0.5 font-mono text-[10.5px] leading-snug text-red-600">
                       {result.detail}
                     </div>
                   )}
