@@ -4,7 +4,9 @@ Game edukasi pemodelan web **full-stack** (HTML, CSS, JavaScript, PHP) berbungku
 
 Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storyline.md`](./storyline.md) (blueprint cerita & silabus).
 
-## Status: Milestone 2 — Game Layer Babak 1 (selesai)
+## Status: Milestone 3 — Cloud: Auth Google SSO, Sinkronisasi & Leaderboard (selesai)
+
+> Aplikasi berjalan sempurna tanpa konfigurasi cloud (**Mode Lokal**). Fitur M3 aktif otomatis begitu environment Supabase diisi — panduan di bagian [Setup Cloud](#setup-cloud-supabase--google-sso).
 
 ### Gameplay & Sandbox (M1)
 
@@ -25,6 +27,15 @@ Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storylin
 - **Event bus tetap sama** — React tetap pemegang sumber kebenaran (zustand); scene Phaser hanya menyinkronkan visual (kontrak `quest:completed`, `bug:spawn`, dst. dari M1 tidak berubah).
 - **Tema terang** — antarmuka cerah dengan aksen cyan. Palet "Cyberpunk" gelap lama tetap tersimpan pada blok `.dark` di `globals.css`; tambahkan kembali kelas `dark` di `<html>` (`layout.tsx`) bila ingin mengaktifkannya.
 
+### Cloud & Sosial (M3)
+
+- **Google SSO via Supabase** — login satu klik (personal/email kampus) dengan sesi berbasis cookie lewat `src/proxy.ts` (Proxy Next 16). Ada pembatasan domain kampus opsional (`NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS`).
+- **Onboarding pendiri** — halaman `/onboarding`: nama startup + avatar emoji; tampil di papan peringkat.
+- **Sinkronisasi progres lintas perangkat** — saat login pertama, progres lokal & cloud di-merge (union misi/dekorasi, revenue/XP = terbesar), lalu setiap perubahan ekonomi di-push dengan debounce 1,5 dtk. Aman offline — gagal jaringan dicoba ulang saat ada perubahan berikutnya.
+- **Papan peringkat** (`/leaderboard`) — top 50 berdasarkan Revenue (XP sebagai penentu seri), barismu disorot "Kamu", halaman di-streaming (Partial Prerender).
+- **Prisma ORM 7 + driver adapter `pg`** — singleton lazy (`getPrisma()`), transaksi untuk tulis snapshot, katalog item di-upsert otomatis saat sync.
+- **Degradasi anggun** — tanpa env cloud: tombol Masuk menampilkan penjelasan Mode Lokal, API menjawab 503 `unconfigured`, halaman lain tetap berfungsi penuh.
+
 ## Menjalankan
 
 ```bash
@@ -37,28 +48,36 @@ pnpm dev          # http://localhost:3000
 | `pnpm dev` | Dev server (Turbopack) |
 | `pnpm build` | Build produksi + typecheck |
 | `pnpm start` | Jalankan hasil build |
-| `pnpm test` | 48 test: integritas quest, evaluator, srcdoc, pipeline sandbox end-to-end (jsdom) |
+| `pnpm test` | 80 test: integritas quest, evaluator, sandbox end-to-end, ekonomi/buff, merge sync, domain email |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint (termasuk aturan React Compiler) |
+| `pnpm db:push` | Dorong schema Prisma ke database (butuh `DATABASE_URL`/`DIRECT_URL`) |
+| `pnpm db:seed` | Seed katalog dekorasi ke `inventory_items` (opsional — sync meng-upsert otomatis) |
 
 ## Arsitektur Singkat
 
 ```
 src/
-├─ app/                     # rute Next.js (App Router): landing, /play
+├─ proxy.ts                 # Next 16 Proxy: refresh sesi Supabase
+├─ app/
+│  ├─ page.tsx              # landing · play/ · login/ · onboarding/ · leaderboard/
+│  ├─ auth/callback/        # penukaran kode OAuth Google -> sesi
+│  └─ api/                  # progress · profile · leaderboard (route handlers)
 ├─ content/
-│  ├─ quests/               # konten misi (version-controlled) + schema zod + fixture solusi
+│  ├─ quests/               # konten misi + schema zod + fixture solusi
+│  ├─ shop/                 # katalog dekorasi + buff
 │  └─ codex/                # artikel Holo-Codex
 ├─ features/
-│  ├─ editor/               # Monaco wrapper + tab file
-│  ├─ sandbox/              # harness evaluasi, buildSrcdoc, SandboxFrame, ConsolePanel
-│  ├─ validation/           # tipe protokol pesan iframe <-> parent
-│  ├─ quests/               # CommandCenter, brief, checklist objektif, tiket, reward dialog
-│  ├─ game/                 # event bus, GamePanel (placeholder), StatsHud
-│  └─ codex/                # panel Holo-Codex
+│  ├─ editor/ · sandbox/ · validation/ · quests/ · codex/
+│  ├─ game/                 # event bus, StatsHud, ShopDialog, phaser/ (scene + canvas)
+│  ├─ auth/                 # AuthProvider, AuthButton, panel login
+│  └─ sync/                 # useCloudSync (merge + push bertahap)
+├─ generated/prisma/        # Prisma Client hasil generate (di-gitignore)
 └─ lib/
-   ├─ stores/               # zustand + persist (progres lokal)
-   ├─ services/             # quest-repository & progress-repository (batas adapter)
+   ├─ stores/               # zustand + persist (sumber kebenaran lokal)
+   ├─ services/             # quest/progress repo · sync merge · leaderboard
+   ├─ supabase/             # klien browser/server, gerbang config, domain
+   ├─ db/                   # singleton Prisma (driver adapter pg)
    └─ utils/                # format rupiah/angka
 ```
 
@@ -68,16 +87,65 @@ src/
 - **Batas adapter** — `questRepository` dan `progressRepository` adalah *seam* yang sama yang akan diisi implementasi Supabase pada M3 tanpa menyentuh komponen.
 - **Event bus React → Game** — `src/features/game/events.ts`; M2 mengganti `GamePanel` React dengan Phaser.js tanpa mengubah pemanggil.
 
+## Setup Cloud (Supabase + Google SSO)
+
+Semua langkah memakai Free Tier Supabase (± 10 menit). Aplikasi tetap berjalan penuh dalam Mode Lokal sebelum ini dilakukan.
+
+### 1. Buat project Supabase
+
+1. Buka [supabase.com](https://supabase.com) → **New project** (simpan password database).
+2. Catat **Project URL** dan **anon key** dari *Project Settings → API*.
+3. Catat dua connection string dari *Project Settings → Database*:
+   - **Transaction pooler** (port `6543`) → `DATABASE_URL` (dipakai aplikasi/serverless)
+   - **Direct connection** (port `5432`) → `DIRECT_URL` (dipakai CLI Prisma untuk migrasi)
+
+### 2. Aktifkan Google OAuth
+
+1. [Google Cloud Console](https://console.cloud.google.com) → *APIs & Services → Credentials* → **Create OAuth client ID** (Web application).
+2. **Authorized redirect URI:** `https://<project-ref>.supabase.co/auth/v1/callback`
+3. Salin Client ID & Client Secret → Supabase Dashboard → *Authentication → Providers → Google* → aktifkan & tempel.
+4. *Authentication → URL Configuration*:
+   - **Site URL:** `http://localhost:3000` (ganti domain produksi saat deploy)
+   - **Redirect URLs:** tambahkan `http://localhost:3000/**` dan `https://<domain-produksi>/**`
+
+### 3. Isi environment & migrasi database
+
+```bash
+cp .env.example .env   # isi 4 nilai: URL, anon key, DATABASE_URL, DIRECT_URL
+pnpm db:push           # membuat tabel: users, user_progress, inventory_items, user_inventory
+pnpm db:seed           # opsional — sync juga meng-upsert katalog item otomatis
+```
+
+### 4. Uji
+
+```bash
+pnpm dev
+```
+
+Buka `/login` → **Masuk dengan Google** → onboarding nama startup + avatar → selesaikan satu misi → buka `/leaderboard` → coba login dari browser/perangkat lain dan pastikan progres ter-merge.
+
+### 5. Deploy ke Vercel
+
+Set environment yang sama di *Project Settings → Environment Variables* (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`, `DIRECT_URL`), deploy, lalu tambahkan domain produksi ke **Redirect URLs** Supabase.
+
+### Opsional: batasi domain kampus
+
+```env
+NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS="student.univ.ac.id,univ.ac.id"
+```
+
+Email di luar domain terdaftar ditolak saat callback OAuth (termasuk subdomain, mis. `dosen@fisip.univ.ac.id`).
+
 ## Roadmap
 
 | Milestone | Isi |
 | --- | --- |
 | ✅ M0–M1 | Bootstrap + vertical slice Babak 1 (HTML) |
 | ✅ M2 | Phaser.js scene isometrik garasi, toko & buff pasif, NPC, bug swarm |
-| M3 | Supabase Auth (Google SSO), sinkronisasi progres, leaderboard |
+| ✅ M3 | Supabase Auth (Google SSO), onboarding, sinkronisasi progres, leaderboard |
 | M4 | Babak 2 CSS: X-Ray Box Model, Flexbox/Grid visualizer, boss Pitching Day |
 | M5 | Babak 3 JS: Event Loop visualizer, boss Cyber Attack Defense |
 | M6 | Babak 4 PHP-WASM + virtual SQLite, boss IPO |
 | M7 | Dashboard dosen, ekspor ZIP, polish performa & keamanan |
 
-Catatan gap PRD yang sudah dicatat untuk M3: tabel `classes`/`class_members` (fitur kelas), `quest_attempts` (akurasi), dan kolom `buffs` pada `inventory_items`.
+Catatan gap PRD: kolom `buffs` pada `inventory_items` sudah diimplementasikan (M3). Sisa untuk M7 — tabel `classes`/`class_members` (dashboard dosen) dan `quest_attempts` (metrik akurasi kode).

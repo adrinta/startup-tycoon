@@ -1,9 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Rocket } from "lucide-react";
+import Link from "next/link";
+import { Rocket, Trophy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Quest, QuestFileMap } from "@/content/quests/schema";
+import { AuthButton } from "@/features/auth/auth-button";
 import { CodexPanel } from "@/features/codex/codex-panel";
 import { FileTabs } from "@/features/editor/file-tabs";
 import { gameEvents } from "@/features/game/events";
@@ -15,6 +17,7 @@ import { QuestTicketList } from "@/features/quests/quest-ticket-list";
 import { RewardDialog } from "@/features/quests/reward-dialog";
 import { ConsolePanel } from "@/features/sandbox/console-panel";
 import { SandboxFrame } from "@/features/sandbox/sandbox-frame";
+import { useCloudSync } from "@/features/sync/use-cloud-sync";
 import {
   type ConsoleEntry,
   type ObjectiveResult,
@@ -62,6 +65,9 @@ export function CommandCenter() {
   const completedQuestIds = useGameStore((state) => state.completedQuestIds);
   const quests = useMemo(() => questRepository.list(), []);
 
+  // Sinkronisasi progres ke cloud (aktif hanya saat Supabase dikonfigurasi & login).
+  useCloudSync();
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workspaceEpoch, setWorkspaceEpoch] = useState(0);
   const [reward, setReward] = useState<{ outcome: QuestOutcome; quest: Quest } | null>(null);
@@ -98,12 +104,24 @@ export function CommandCenter() {
             </div>
           </div>
         </div>
-        <StatsHud
-          onAfterReset={() => {
-            setSelectedId(null);
-            setWorkspaceEpoch((epoch) => epoch + 1);
-          }}
-        />
+        <div className="flex items-center gap-2.5">
+          <StatsHud
+            onAfterReset={() => {
+              setSelectedId(null);
+              setWorkspaceEpoch((epoch) => epoch + 1);
+            }}
+          />
+          <span className="h-6 w-px bg-border" />
+          <Link
+            href="/leaderboard"
+            title="Papan Peringkat"
+            aria-label="Papan Peringkat"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Trophy className="h-4 w-4" />
+          </Link>
+          <AuthButton />
+        </div>
       </header>
 
       <QuestWorkspace

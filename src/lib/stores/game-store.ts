@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { QuestFileMap } from "@/content/quests/schema";
 import { computeBuffs, getShopItem } from "@/content/shop/items";
+import type { ProgressSnapshotFull } from "@/lib/services/sync";
 
 /**
  * Penyimpanan progres LOKAL (adapter untuk M1–M2).
@@ -42,6 +43,8 @@ interface GameState {
   completeQuest: (quest: QuestRewardInput) => QuestOutcome;
   buyItem: (itemId: string) => BuyItemResult;
   saveDraft: (questId: string, files: QuestFileMap) => void;
+  /** Menerapkan hasil merge cloud -> lokal (dipakai useCloudSync). */
+  applyCloudSnapshot: (snapshot: ProgressSnapshotFull) => void;
   resetGame: () => void;
 }
 
@@ -148,6 +151,14 @@ export const useGameStore = create<GameState>()(
         set((state) => ({
           drafts: { ...state.drafts, [questId]: files },
         })),
+
+      applyCloudSnapshot: (snapshot) =>
+        set({
+          revenue: snapshot.revenue,
+          activeUsers: snapshot.activeUsers,
+          completedQuestIds: snapshot.completedQuestIds,
+          ownedItemIds: snapshot.ownedItemIds,
+        }),
 
       resetGame: () =>
         set({

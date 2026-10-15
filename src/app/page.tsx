@@ -11,6 +11,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AuthButton } from "@/features/auth/auth-button";
 
 export const metadata: Metadata = {
   title: "Startup Tycoon — Dari Garasi ke Unicorn",
@@ -69,9 +70,7 @@ export default function HomePage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" disabled className="font-mono text-[11px]">
-            Masuk dengan Google — segera
-          </Button>
+          <AuthButton size="sm" variant="ghost" />
         </div>
       </header>
 
@@ -104,9 +103,7 @@ export default function HomePage() {
                 Mulai dari Garasi <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button variant="outline" size="lg" disabled className="gap-2">
-              Masuk dengan Google — segera
-            </Button>
+            <AuthButton size="lg" variant="outline" />
           </div>
 
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
