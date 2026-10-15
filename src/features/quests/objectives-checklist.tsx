@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Circle, Lightbulb, Loader2, XCircle } from "lucide-react";
 import type { Objective } from "@/content/quests/schema";
 import type { ObjectiveResult } from "@/features/validation/types";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,8 @@ export interface ObjectivesChecklistProps {
   results: ObjectiveResult[] | null;
   status: RunStatus;
   completed: boolean;
+  /** Petunjuk misi — hanya diisi bila pemain memiliki buff "Petunjuk dari Ada". */
+  hint?: string | null;
 }
 
 export function ObjectivesChecklist({
@@ -19,6 +21,7 @@ export function ObjectivesChecklist({
   results,
   status,
   completed,
+  hint = null,
 }: ObjectivesChecklistProps) {
   const resultById = new Map((results ?? []).map((result) => [result.id, result]));
   const passedCount = objectives.filter((objective) => resultById.get(objective.id)?.passed).length;
@@ -37,6 +40,15 @@ export function ObjectivesChecklist({
           {results ? `${passedCount}/${objectives.length}` : `0/${objectives.length}`}
         </div>
       </div>
+
+      {hint && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11.5px] leading-relaxed text-amber-900">
+          <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+          <span>
+            <span className="font-semibold">Petunjuk (buff Lampu Berdiri):</span> {hint}
+          </span>
+        </div>
+      )}
 
       {status === "running" && (
         <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-[11px] text-primary">

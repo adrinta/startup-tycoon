@@ -1,0 +1,732 @@
+import Phaser from "phaser";
+import { computeBuffs, type BuffTotals } from "@/content/shop/items";
+import {
+  CANVAS_WIDTH,
+  GRID_COLS,
+  GRID_ROWS,
+  ROOM_PROPS,
+  type PropDef,
+} from "./room-layout";
+
+export interface RoomState {
+  completedHooks: string[];
+  ownedItemIds: string[];
+  activeQuestTitle: string | null;
+  activeQuestHint: string | null;
+}
+
+/* ----------------------------- Geometri isometrik ----------------------------- */
+
+const TILE_W = 56;
+const TILE_H = 28;
+const ORIGIN_X = CANVAS_WIDTH / 2;
+const ORIGIN_Y = 148;
+const WALL_H = 92;
+
+interface Pt {
+  x: number;
+  y: number;
+}
+
+interface IsoBox {
+  backT: Pt;
+  rightT: Pt;
+  frontT: Pt;
+  leftT: Pt;
+  backB: Pt;
+  rightB: Pt;
+  frontB: Pt;
+  leftB: Pt;
+}
+
+interface Palette {
+  top: number;
+  left: number;
+  right: number;
+}
+
+function isoX(gx: number, gy: number): number {
+  return ORIGIN_X + (gx - gy) * (TILE_W / 2);
+}
+
+function isoY(gx: number, gy: number, lift = 0): number {
+  return ORIGIN_Y + (gx + gy) * (TILE_H / 2) - lift;
+}
+
+function wallPoint(axis: "left" | "right", u: number, h: number): Pt {
+  if (axis === "right") {
+    return { x: ORIGIN_X + u * (TILE_W / 2), y: ORIGIN_Y + u * (TILE_H / 2) - h };
+  }
+  return { x: ORIGIN_X - u * (TILE_W / 2), y: ORIGIN_Y + u * (TILE_H / 2) - h };
+}
+
+function ptLerp(a: Pt, b: Pt, t: number, lift = 0): Pt {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t - lift };
+}
+
+function fillQuad(g: Phaser.GameObjects.Graphics, points: Pt[], color: number, alpha = 1): void {
+  g.fillStyle(color, alpha);
+  g.fillPoints(points, true);
+}
+
+function isoBoxPoints(
+  cx: number,
+  cy: number,
+  w: number,
+  d: number,
+  base: number,
+  h: number,
+): IsoBox {
+  const hx = (w * TILE_W) / 2;
+  const hy = (d * TILE_H) / 2;
+  const t = base + h;
+  return {
+    backT: { x: cx, y: cy - hy - t },
+    rightT: { x: cx + hx, y: cy - t },
+    frontT: { x: cx, y: cy + hy - t },
+    leftT: { x: cx - hx, y: cy - t },
+    backB: { x: cx, y: cy - hy - base },
+    rightB: { x: cx + hx, y: cy - base },
+    frontB: { x: cx, y: cy + hy - base },
+    leftB: { x: cx - hx, y: cy - base },
+  };
+}
+
+function drawBox(g: Phaser.GameObjects.Graphics, box: IsoBox, palette: Palette): void {
+  fillQuad(g, [box.leftT, box.frontT, box.frontB, box.leftB], palette.left);
+  fillQuad(g, [box.rightT, box.frontT, box.frontB, box.rightB], palette.right);
+  fillQuad(g, [box.backT, box.rightT, box.frontT, box.leftT], palette.top);
+}
+
+function drawIsoBox(
+  g: Phaser.GameObjects.Graphics,
+  cx: number,
+  cy: number,
+  w: number,
+  d: number,
+  base: number,
+  h: number,
+  palette: Palette,
+): void {
+  drawBox(g, isoBoxPoints(cx, cy, w, d, base, h), palette);
+}
+
+function shadow(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number): void {
+  g.fillStyle(0x0f172a, 0.08);
+  g.fillEllipse(x, y, w, h);
+}
+
+const PALETTES = {
+  wood: { top: 0xd9b58c, left: 0xbf9569, right: 0xa67c52 },
+  monitor: { top: 0x334155, left: 0x1f2a3a, right: 0x141c28 },
+  metal: { top: 0xe2e8f0, left: 0xc3ced9, right: 0xa8b6c4 },
+  slate: { top: 0x64748b, left: 0x4e5c70, right: 0x3c4a5c },
+  server: { top: 0x334155, left: 0x212c3d, right: 0x161e2c },
+  terracotta: { top: 0xd98a67, left: 0xbf7050, right: 0xa55b3d },
+  amberBox: { top: 0xfbbf24, left: 0xe2a70e, right: 0xbf8a08 },
+  cyanBox: { top: 0x67e8f9, left: 0x22d3ee, right: 0x0ea5e9 },
+  redBox: { top: 0xfca5a5, left: 0xf87171, right: 0xef4444 },
+  cabinet: { top: 0xb6c2d1, left: 0x94a3b8, right: 0x7b8a9e },
+  espresso: { top: 0x475569, left: 0x334155, right: 0x26303f },
+} as const;
+
+function depthFor(def: PropDef): number {
+  if (def.builder === "banner" || def.builder === "whiteboard") return -1;
+  if (def.builder === "rug") return 1;
+  const base = 10 + (def.gx + def.gy) * 10;
+  return def.builder === "trophy" ? base + 2 : base;
+}
+
+/* ---------------------------------- Scene ---------------------------------- */
+
+export class GarageScene extends Phaser.Scene {
+  private desired: RoomState;
+  private ready = false;
+  private props = new Map<string, Phaser.GameObjects.Container>();
+  private bugs: Phaser.GameObjects.Text[] = [];
+  private ada?: Phaser.GameObjects.Container;
+  private bubble?: Phaser.GameObjects.Container;
+  private buffs: BuffTotals = computeBuffs([]);
+  private activeQuestTitle: string | null = null;
+  private activeQuestHint: string | null = null;
+
+  constructor(initialState: RoomState) {
+    super("garage");
+    this.desired = initialState;
+  }
+
+  create(): void {
+    this.drawRoomBase();
+    this.createAda();
+    this.ready = true;
+    this.applyState(this.desired, false);
+  }
+
+  /** Dipanggil React setiap kali progres/dekorasi berubah (idempoten). */
+  syncRoom(state: RoomState): void {
+    this.desired = state;
+    if (!this.ready) return;
+    this.applyState(state, true);
+  }
+
+  spawnBugs(count = 2): void {
+    if (!this.ready) return;
+    for (let i = 0; i < count; i += 1) {
+      const bx = Phaser.Math.Between(60, 262);
+      const by = Phaser.Math.Between(170, 266);
+      const bug = this.add
+        .text(bx, by, "🐛", { fontSize: "15px" })
+        .setOrigin(0.5)
+        .setDepth(200);
+      this.tweens.add({
+        targets: bug,
+        x: bx + Phaser.Math.Between(-20, 20),
+        y: by + Phaser.Math.Between(-9, 9),
+        angle: Phaser.Math.Between(-16, 16),
+        duration: Phaser.Math.Between(480, 760),
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.InOut",
+      });
+      this.time.delayedCall(6500, () => this.flyAway(bug));
+      this.bugs.push(bug);
+      if (this.bugs.length > 8) {
+        const oldest = this.bugs.shift();
+        oldest?.destroy();
+      }
+    }
+  }
+
+  clearBugs(): void {
+    for (const bug of this.bugs) this.flyAway(bug);
+    this.bugs = [];
+  }
+
+  private flyAway(bug: Phaser.GameObjects.Text): void {
+    if (!bug.active) return;
+    this.tweens.killTweensOf(bug);
+    this.tweens.add({
+      targets: bug,
+      y: bug.y - 46,
+      alpha: 0,
+      duration: 480,
+      ease: "Cubic.Out",
+      onComplete: () => bug.destroy(),
+    });
+  }
+
+  /* ------------------------------- State sync ------------------------------- */
+
+  private applyState(state: RoomState, animate: boolean): void {
+    this.buffs = computeBuffs(state.ownedItemIds);
+    this.activeQuestTitle = state.activeQuestTitle;
+    this.activeQuestHint = state.activeQuestHint;
+
+    const hooks = new Set(state.completedHooks);
+    const items = new Set(state.ownedItemIds);
+
+    for (const def of ROOM_PROPS) {
+      const unlocked = def.hook
+        ? hooks.has(def.hook)
+        : def.itemId
+          ? items.has(def.itemId)
+          : false;
+      if (!unlocked || this.props.has(def.key)) continue;
+
+      const container = this.buildProp(def);
+      if (!container) continue;
+      container.setDepth(depthFor(def));
+      this.props.set(def.key, container);
+      if (animate) this.animateAppear(container);
+    }
+  }
+
+  private animateAppear(container: Phaser.GameObjects.Container): void {
+    container.setScale(0.5).setAlpha(0);
+    this.tweens.add({
+      targets: container,
+      scale: 1,
+      alpha: 1,
+      duration: 420,
+      ease: "Back.Out",
+    });
+    if (container.depth >= 0) {
+      const ring = this.add.graphics();
+      ring.lineStyle(2, 0x0ea5e9, 0.55);
+      ring.strokeEllipse(0, 0, 34, 15);
+      ring.setPosition(container.x, container.y + 2).setDepth(container.depth + 1);
+      this.tweens.add({
+        targets: ring,
+        scale: 2.4,
+        alpha: 0,
+        duration: 620,
+        ease: "Cubic.Out",
+        onComplete: () => ring.destroy(),
+      });
+    }
+  }
+
+  /* ------------------------------ Ruangan dasar ----------------------------- */
+
+  private drawRoomBase(): void {
+    const floor = this.add.graphics().setDepth(-3);
+    for (let gx = 0; gx < GRID_COLS; gx += 1) {
+      for (let gy = 0; gy < GRID_ROWS; gy += 1) {
+        const a: Pt = { x: isoX(gx, gy), y: isoY(gx, gy) };
+        const b: Pt = { x: isoX(gx + 1, gy), y: isoY(gx + 1, gy) };
+        const c: Pt = { x: isoX(gx + 1, gy + 1), y: isoY(gx + 1, gy + 1) };
+        const d: Pt = { x: isoX(gx, gy + 1), y: isoY(gx, gy + 1) };
+        floor.fillStyle((gx + gy) % 2 === 0 ? 0xffffff : 0xeef3f9, 1);
+        floor.fillPoints([a, b, c, d], true);
+        floor.lineStyle(1, 0xdfe7f0, 1);
+        floor.strokePoints([a, b, c, d], true);
+      }
+    }
+
+    const walls = this.add.graphics().setDepth(-2);
+    fillQuad(
+      walls,
+      [
+        wallPoint("left", 0, 0),
+        wallPoint("left", GRID_ROWS, 0),
+        wallPoint("left", GRID_ROWS, WALL_H),
+        wallPoint("left", 0, WALL_H),
+      ],
+      0xf1f5f9,
+    );
+    fillQuad(
+      walls,
+      [
+        wallPoint("right", 0, 0),
+        wallPoint("right", GRID_COLS, 0),
+        wallPoint("right", GRID_COLS, WALL_H),
+        wallPoint("right", 0, WALL_H),
+      ],
+      0xe8edf4,
+    );
+
+    // Garis panel dinding.
+    walls.lineStyle(1, 0xd7dfe9, 1);
+    for (let u = 1; u < GRID_ROWS; u += 1) {
+      const p1 = wallPoint("left", u, 0);
+      const p2 = wallPoint("left", u, WALL_H - 10);
+      walls.lineBetween(p1.x, p1.y, p2.x, p2.y);
+    }
+    for (let u = 1; u < GRID_COLS; u += 1) {
+      const p1 = wallPoint("right", u, 0);
+      const p2 = wallPoint("right", u, WALL_H - 10);
+      walls.lineBetween(p1.x, p1.y, p2.x, p2.y);
+    }
+
+    // Rim atas + alas dinding.
+    walls.lineStyle(2, 0xcbd5e1, 1);
+    const leftRimA = wallPoint("left", 0, WALL_H);
+    const leftRimB = wallPoint("left", GRID_ROWS, WALL_H);
+    walls.lineBetween(leftRimA.x, leftRimA.y, leftRimB.x, leftRimB.y);
+    const rightRimA = wallPoint("right", 0, WALL_H);
+    const rightRimB = wallPoint("right", GRID_COLS, WALL_H);
+    walls.lineBetween(rightRimA.x, rightRimA.y, rightRimB.x, rightRimB.y);
+  }
+
+  /* --------------------------------- Properti -------------------------------- */
+
+  private buildProp(def: PropDef): Phaser.GameObjects.Container | null {
+    switch (def.builder) {
+      case "desk-monitor":
+        return this.buildDeskMonitor(def.gx, def.gy);
+      case "banner":
+        return this.buildBanner(def.gx);
+      case "whiteboard":
+        return this.buildWhiteboard(def.gy);
+      case "rack":
+        return this.buildRack(def.gx, def.gy);
+      case "printer":
+        return this.buildPrinter(def.gx, def.gy);
+      case "zones":
+        return this.buildZones(def.gx, def.gy);
+      case "trophy":
+        return this.buildTrophy(def.gx, def.gy);
+      case "rug":
+        return this.buildRug(def.gx, def.gy);
+      case "plant":
+        return this.buildPlant(def.gx, def.gy);
+      case "chair":
+        return this.buildChair(def.gx, def.gy);
+      case "standing-lamp":
+        return this.buildLamp(def.gx, def.gy);
+      case "espresso":
+        return this.buildEspresso(def.gx, def.gy);
+      case "cabinet":
+        return this.buildCabinet(def.gx, def.gy);
+      case "server-mini":
+        return this.buildServer(def.gx, def.gy);
+      default:
+        return null;
+    }
+  }
+
+  private buildDeskMonitor(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 58, 20);
+    drawIsoBox(g, 0, 0, 1.05, 0.8, 0, 20, PALETTES.wood);
+
+    const monitor = isoBoxPoints(0, -4, 0.5, 0.24, 20, 15);
+    drawBox(g, monitor, PALETTES.monitor);
+
+    const screen = [
+      ptLerp(monitor.leftB, monitor.frontB, 0.18, 5),
+      ptLerp(monitor.leftB, monitor.frontB, 0.82, 5),
+      ptLerp(monitor.leftB, monitor.frontB, 0.82, 12),
+      ptLerp(monitor.leftB, monitor.frontB, 0.18, 12),
+    ];
+    fillQuad(g, screen, 0x22d3ee, 0.92);
+    c.add(g);
+
+    const ledPos = ptLerp(monitor.leftB, monitor.frontB, 0.86, 4);
+    const led = this.add.graphics();
+    led.fillStyle(0x4ade80, 1);
+    led.fillCircle(ledPos.x, ledPos.y, 1.6);
+    c.add(led);
+    this.tweens.add({ targets: led, alpha: 0.25, duration: 900, yoyo: true, repeat: -1 });
+    return c;
+  }
+
+  private buildBanner(gx: number): Phaser.GameObjects.Container {
+    const g = this.add.graphics();
+    const u1 = gx - 1.3;
+    const u2 = gx + 1.3;
+    const h1 = 30;
+    const h2 = 74;
+
+    const quad = [
+      wallPoint("right", u1, h1),
+      wallPoint("right", u2, h1),
+      wallPoint("right", u2, h2),
+      wallPoint("right", u1, h2),
+    ];
+    fillQuad(g, quad, 0x38bdf8);
+    g.lineStyle(2, 0xffffff, 0.85);
+    g.strokePoints(quad, true);
+
+    const mid = wallPoint("right", gx, (h1 + h2) / 2);
+    g.fillStyle(0xffffff, 0.9);
+    g.fillCircle(mid.x, mid.y, 9);
+    g.fillStyle(0x0ea5e9, 1);
+    g.fillCircle(mid.x, mid.y, 5);
+
+    for (let i = 0; i < 5; i += 1) {
+      const a = wallPoint("right", u1 + (i + 0.5) * ((u2 - u1) / 5), h1 + 5);
+      g.fillStyle(0xffffff, 0.55);
+      g.fillTriangle(a.x - 5, a.y - 4, a.x + 5, a.y - 4, a.x, a.y + 4);
+    }
+    return this.add.container(0, 0, [g]).setDepth(-1);
+  }
+
+  private buildWhiteboard(gy: number): Phaser.GameObjects.Container {
+    const g = this.add.graphics();
+    const u1 = gy - 1.35;
+    const u2 = gy + 1.35;
+    const h1 = 34;
+    const h2 = 82;
+
+    const quad = [
+      wallPoint("left", u1, h1),
+      wallPoint("left", u2, h1),
+      wallPoint("left", u2, h2),
+      wallPoint("left", u1, h2),
+    ];
+    fillQuad(g, quad, 0xffffff);
+    g.lineStyle(2, 0xcbd5e1, 1);
+    g.strokePoints(quad, true);
+
+    // Coretan grafik: tiga batang + garis tren.
+    const bars: Array<[number, number, number]> = [
+      [0.22, 10, 0x22d3ee],
+      [0.5, 16, 0x34d399],
+      [0.78, 12, 0xfbbf24],
+    ];
+    for (const [pos, height, color] of bars) {
+      const bx1 = u1 + (u2 - u1) * (pos - 0.09);
+      const bx2 = u1 + (u2 - u1) * (pos + 0.09);
+      fillQuad(
+        g,
+        [
+          wallPoint("left", bx1, h1 + 6),
+          wallPoint("left", bx2, h1 + 6),
+          wallPoint("left", bx2, h1 + 6 + height),
+          wallPoint("left", bx1, h1 + 6 + height),
+        ],
+        color,
+        0.85,
+      );
+    }
+    g.lineStyle(2, 0x0f172a, 0.35);
+    const t1 = wallPoint("left", u1 + (u2 - u1) * 0.15, h2 - 8);
+    const t2 = wallPoint("left", u1 + (u2 - u1) * 0.5, h2 - 4);
+    const t3 = wallPoint("left", u1 + (u2 - u1) * 0.85, h2 - 10);
+    g.lineBetween(t1.x, t1.y, t2.x, t2.y);
+    g.lineBetween(t2.x, t2.y, t3.x, t3.y);
+    return this.add.container(0, 0, [g]).setDepth(-1);
+  }
+
+  private buildRack(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 48, 16);
+    drawIsoBox(g, 0, 0, 0.75, 0.42, 0, 34, PALETTES.metal);
+
+    const box = isoBoxPoints(0, 0, 0.75, 0.42, 0, 34);
+    for (const lift of [12, 22]) {
+      const p1 = ptLerp(box.leftB, box.frontB, 0.12, lift);
+      const p2 = ptLerp(box.leftB, box.frontB, 0.88, lift);
+      g.lineStyle(1.5, 0x94a3b8, 0.9);
+      g.lineBetween(p1.x, p1.y, p2.x, p2.y);
+    }
+    drawIsoBox(g, -8, 0, 0.22, 0.3, 12, 8, PALETTES.amberBox);
+    drawIsoBox(g, 10, -1, 0.22, 0.3, 12, 8, PALETTES.cyanBox);
+    drawIsoBox(g, 0, 0, 0.24, 0.3, 0, 10, PALETTES.redBox);
+    c.add(g);
+    return c;
+  }
+
+  private buildPrinter(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 42, 14);
+    drawIsoBox(g, 0, 0, 0.55, 0.5, 0, 14, PALETTES.metal);
+    drawIsoBox(g, 0, -3, 0.26, 0.26, 14, 2, {
+      top: 0xffffff,
+      left: 0xf1f5f9,
+      right: 0xe2e8f0,
+    });
+    c.add(g);
+    return c;
+  }
+
+  private buildZones(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+
+    const decal = (dx: number, dy: number) => {
+      const hx = (0.44 * TILE_W) / 2;
+      const hy = (0.44 * TILE_H) / 2;
+      g.lineStyle(1.5, 0x0ea5e9, 0.5);
+      g.strokePoints(
+        [
+          { x: dx, y: dy - hy },
+          { x: dx + hx, y: dy },
+          { x: dx, y: dy + hy },
+          { x: dx - hx, y: dy },
+        ],
+        true,
+      );
+    };
+    decal(0, 0);
+    decal(-11.2, -22.4);
+
+    shadow(g, 30, 8, 40, 13);
+    drawIsoBox(g, 24, 6, 0.34, 0.34, 0, 10, PALETTES.amberBox);
+    drawIsoBox(g, 26, 2, 0.3, 0.3, 10, 9, PALETTES.cyanBox);
+    c.add(g);
+    return c;
+  }
+
+  private buildTrophy(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy) + 12, isoY(gx, gy) + 4);
+    const glow = this.add.graphics();
+    glow.fillStyle(0xfbbf24, 0.2);
+    glow.fillCircle(0, -48, 16);
+    const trophy = this.add.text(0, -48, "🏆", { fontSize: "22px" }).setOrigin(0.5);
+    c.add([glow, trophy]);
+    this.tweens.add({
+      targets: trophy,
+      scale: 1.08,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut",
+    });
+    return c;
+  }
+
+  private buildRug(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    g.fillStyle(0x818cf8, 0.28);
+    g.fillEllipse(0, 0, 148, 70);
+    g.lineStyle(2, 0x6366f1, 0.45);
+    g.strokeEllipse(0, 0, 148, 70);
+    g.lineStyle(1.5, 0x6366f1, 0.3);
+    g.strokeEllipse(0, 0, 104, 48);
+    c.add(g);
+    return c;
+  }
+
+  private buildPlant(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 30, 11);
+    drawIsoBox(g, 0, 0, 0.34, 0.34, 0, 10, PALETTES.terracotta);
+    g.fillStyle(0x15803d, 1);
+    g.fillCircle(0, -14, 6);
+    g.fillStyle(0x22c55e, 1);
+    g.fillCircle(-5, -18, 7);
+    g.fillStyle(0x16a34a, 1);
+    g.fillCircle(4, -22, 8);
+    c.add(g);
+    return c;
+  }
+
+  private buildChair(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 30, 12);
+    drawIsoBox(g, 0, 0, 0.45, 0.4, 0, 6, PALETTES.slate);
+    drawIsoBox(g, 0, -7, 0.45, 0.1, 6, 16, PALETTES.espresso);
+    c.add(g);
+    return c;
+  }
+
+  private buildLamp(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 26, 10);
+    drawIsoBox(g, 0, 0, 0.09, 0.09, 0, 44, PALETTES.slate);
+    drawIsoBox(g, -2, -2, 0.34, 0.2, 44, 8, PALETTES.amberBox);
+    g.fillStyle(0xfbbf24, 0.14);
+    g.fillTriangle(-12, -42, -32, -14, 8, -14);
+    c.add(g);
+    return c;
+  }
+
+  private buildEspresso(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 34, 12);
+    drawIsoBox(g, 0, 0, 0.42, 0.36, 0, 15, PALETTES.espresso);
+    drawIsoBox(g, 0, 0, 0.12, 0.12, 15, 5, PALETTES.metal);
+    g.fillStyle(0x22d3ee, 1);
+    g.fillCircle(7, -11, 1.5);
+    c.add(g);
+    return c;
+  }
+
+  private buildCabinet(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 46, 15);
+    drawIsoBox(g, 0, 0, 0.6, 0.4, 0, 28, PALETTES.cabinet);
+
+    const box = isoBoxPoints(0, 0, 0.6, 0.4, 0, 28);
+    g.lineStyle(1, 0x64748b, 0.8);
+    for (const lift of [9, 18]) {
+      const p1 = ptLerp(box.leftB, box.frontB, 0.15, lift);
+      const p2 = ptLerp(box.leftB, box.frontB, 0.85, lift);
+      g.lineBetween(p1.x, p1.y, p2.x, p2.y);
+    }
+    c.add(g);
+    return c;
+  }
+
+  private buildServer(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 40, 14);
+    drawIsoBox(g, 0, 0, 0.5, 0.45, 0, 38, PALETTES.server);
+
+    const box = isoBoxPoints(0, 0, 0.5, 0.45, 0, 38);
+    const ledColors = [0x4ade80, 0x4ade80, 0x22d3ee, 0x4ade80];
+    for (let i = 0; i < ledColors.length; i += 1) {
+      const p = ptLerp(box.leftB, box.frontB, 0.3, 7 + i * 7);
+      g.fillStyle(ledColors[i], 1);
+      g.fillCircle(p.x, p.y, 1.8);
+    }
+    c.add(g);
+    return c;
+  }
+
+  /* ----------------------------------- Ada ----------------------------------- */
+
+  private createAda(): void {
+    const g = this.add.graphics();
+    g.fillStyle(0x0f172a, 0.1);
+    g.fillEllipse(0, 4, 34, 12);
+    g.fillStyle(0xffffff, 1);
+    g.lineStyle(2, 0x0ea5e9, 0.8);
+    g.fillCircle(0, -30, 19);
+    g.strokeCircle(0, -30, 19);
+
+    const emoji = this.add.text(0, -30, "👩‍💻", { fontSize: "20px" }).setOrigin(0.5);
+    const name = this.add
+      .text(0, 6, "Ada", { fontSize: "10px", color: "#475569", fontStyle: "bold" })
+      .setOrigin(0.5, 0);
+
+    this.ada = this.add
+      .container(isoX(4.2, 4.2), isoY(4.2, 4.2), [g, emoji, name])
+      .setDepth(95);
+    this.ada.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(-23, -48, 46, 66),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
+    this.ada.on("pointerdown", () => this.toggleBubble());
+
+    this.tweens.add({
+      targets: emoji,
+      y: -33,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut",
+    });
+  }
+
+  private toggleBubble(): void {
+    if (this.bubble) {
+      this.bubble.destroy();
+      this.bubble = undefined;
+      return;
+    }
+
+    const message = this.bubbleMessage();
+    const text = this.add.text(0, 0, message, {
+      fontFamily: "system-ui, sans-serif",
+      fontSize: "11px",
+      color: "#0f172a",
+      wordWrap: { width: 190 },
+      lineSpacing: 3,
+    });
+    const w = Math.ceil(Math.min(190, text.width)) + 22;
+    const h = Math.ceil(text.height) + 18;
+    text.setPosition(-w / 2 + 11, -h + 9);
+
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 0.98);
+    g.lineStyle(1.5, 0x38bdf8, 0.9);
+    g.fillRoundedRect(-w / 2, -h, w, h, 8);
+    g.strokeRoundedRect(-w / 2, -h, w, h, 8);
+    g.fillStyle(0xffffff, 0.98);
+    g.fillTriangle(-6, -2, 6, -2, 0, 10);
+
+    if (!this.ada) return;
+    this.bubble = this.add
+      .container(this.ada.x, this.ada.y - 62, [g, text])
+      .setDepth(150);
+
+    this.time.delayedCall(9000, () => {
+      this.bubble?.destroy();
+      this.bubble = undefined;
+    });
+  }
+
+  private bubbleMessage(): string {
+    if (this.buffs.hintUnlocked && this.activeQuestHint) {
+      return `💡 Petunjuk "${this.activeQuestTitle ?? "misi ini"}": ${this.activeQuestHint}`;
+    }
+    if (this.activeQuestTitle) {
+      return `Kamu sedang mengerjakan "${this.activeQuestTitle}". Tulis kodenya di panel tengah, lalu tekan Deploy Code. Aku di sini kalau butuh bantuan!`;
+    }
+    return "Halo Founder! Pilih salah satu tiket di daftar, lalu tulis kodenya di panel tengah.";
+  }
+}

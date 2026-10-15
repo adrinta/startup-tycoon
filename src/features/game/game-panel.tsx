@@ -1,28 +1,30 @@
 "use client";
 
-import { Bug, Lock, MapPin, Terminal } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Bug, MapPin, Terminal } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { gameEvents } from "@/features/game/events";
+import type { RoomState } from "@/features/game/phaser/garage-scene";
+import { ShopDialog } from "@/features/game/shop-dialog";
 import { questRepository } from "@/lib/services/quest-repository";
 import { useGameStore } from "@/lib/stores/game-store";
 import { cn } from "@/lib/utils";
 
-interface RoomSlot {
-  hook: string;
-  emoji: string;
-  label: string;
-}
+const GameCanvas = dynamic(
+  () => import("@/features/game/phaser/game-canvas").then((mod) => mod.GameCanvas),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="aspect-[320/344] w-full animate-pulse rounded-md border border-border/70 bg-muted/50" />
+    ),
+  },
+);
 
-const ROOM_SLOTS: RoomSlot[] = [
-  { hook: "garage.monitor-on", emoji: "🖥️", label: "Monitor CRT" },
-  { hook: "garage.banner", emoji: "🪧", label: "Banner Toko" },
-  { hook: "garage.rack", emoji: "🗄️", label: "Rak Produk" },
-  { hook: "garage.whiteboard", emoji: "📋", label: "Papan Kas" },
-  { hook: "garage.printer", emoji: "🖨️", label: "Mesin Cetak" },
-  { hook: "garage.zones", emoji: "📦", label: "Zona Kerja" },
-  { hook: "garage.audit", emoji: "🏆", label: "Lencana Audit" },
-];
+export interface GamePanelProps {
+  activeQuestTitle: string | null;
+  activeQuestHint: string | null;
+}
 
 interface FeedEntry {
   id: number;
@@ -32,8 +34,10 @@ interface FeedEntry {
 
 let feedSequence = 0;
 
-export function GamePanel() {
+export function GamePanel({ activeQuestTitle, activeQuestHint }: GamePanelProps) {
   const completedQuestIds = useGameStore((state) => state.completedQuestIds);
+  const ownedItemIds = useGameStore((state) => state.ownedItemIds);
+
   const [feed, setFeed] = useState<FeedEntry[]>([
     {
       id: feedSequence++,
@@ -42,29 +46,26 @@ export function GamePanel() {
     },
   ]);
   const [bugs, setBugs] = useState(0);
-  const [highlighted, setHighlighted] = useState<string | null>(null);
-  const previousHooksRef = useRef<Set<string>>(new Set());
+  const [bugBurst, setBugBurst] = useState(0);
+  const [clearBurst, setClearBurst] = useState(0);
 
-  const unlockedHooks = useMemo(() => {
-    const hooks = new Set<string>();
+  const completedHooks = useMemo(() => {
+    const hooks: string[] = [];
     questRepository.list().forEach((quest) => {
-      if (completedQuestIds.includes(quest.id)) hooks.add(quest.visualHook);
+      if (completedQuestIds.includes(quest.id)) hooks.push(quest.visualHook);
     });
     return hooks;
   }, [completedQuestIds]);
 
-  useEffect(() => {
-    const added: string[] = [];
-    unlockedHooks.forEach((hook) => {
-      if (!previousHooksRef.current.has(hook)) added.push(hook);
-    });
-    previousHooksRef.current = unlockedHooks;
-    if (added.length > 0) {
-      setHighlighted(added[added.length - 1]);
-      const timer = setTimeout(() => setHighlighted(null), 1600);
-      return () => clearTimeout(timer);
-    }
-  }, [unlockedHooks]);
+  const roomState = useMemo<RoomState>(
+    () => ({
+      completedHooks,
+      ownedItemIds,
+      activeQuestTitle,
+      activeQuestHint,
+    }),
+    [completedHooks, ownedItemIds, activeQuestTitle, activeQuestHint],
+  );
 
   useEffect(() => {
     function addEntry(text: string, tone: FeedEntry["tone"]) {
@@ -78,6 +79,7 @@ export function GamePanel() {
       gameEvents.on("quest:completed", (payload) => {
         addEntry(payload.visualNote, "success");
         setBugs(0);
+        setClearBurst((count) => count + 1);
       }),
       gameEvents.on("quest:failed", (payload) => {
         addEntry(
@@ -87,6 +89,7 @@ export function GamePanel() {
       }),
       gameEvents.on("bug:spawn", () => {
         setBugs((count) => Math.min(count + 1, 9));
+        setBugBurst((count) => count + 1);
       }),
     ];
 
@@ -104,49 +107,24 @@ export function GamePanel() {
             Garasi Berdebu
           </span>
         </div>
-        <AnimatePresence>
-          {bugs > 0 && (
-            <motion.span
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 font-mono text-[10px] text-red-600"
-            >
-              <Bug className="h-3 w-3" /> {bugs} bug
-            </motion.span>
-          )}
-        </AnimatePresence>
+        <div className="flex items-center gap-1.5">
+          <AnimatePresence>
+            {bugs > 0 && (
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 font-mono text-[10px] text-red-600"
+              >
+                <Bug className="h-3 w-3" /> {bugs}
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <ShopDialog />
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5">
-        {ROOM_SLOTS.map((slot) => {
-          const unlocked = unlockedHooks.has(slot.hook);
-          const isHighlighted = highlighted === slot.hook;
-          return (
-            <motion.div
-              key={slot.hook}
-              animate={{
-                scale: isHighlighted ? 1.06 : 1,
-                opacity: unlocked ? 1 : 0.6,
-              }}
-              transition={{ type: "spring", stiffness: 320, damping: 22 }}
-              className={cn(
-                "relative flex aspect-square flex-col items-center justify-center gap-1 rounded-md border bg-card",
-                unlocked ? "border-primary/35 bg-primary/[0.06]" : "border-border/70 grayscale",
-                isHighlighted && "shadow-[0_6px_18px] shadow-primary/25 ring-1 ring-primary/50",
-              )}
-            >
-              <span className="text-xl leading-none">{slot.emoji}</span>
-              <span className="px-1 text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                {slot.label}
-              </span>
-              {!unlocked && (
-                <Lock className="absolute right-1 top-1 h-2.5 w-2.5 text-muted-foreground/70" />
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
+      <GameCanvas roomState={roomState} bugBurst={bugBurst} clearBurst={clearBurst} />
 
       <div className="rounded-md border border-border/70 bg-muted/40">
         <div className="flex items-center gap-1.5 border-b border-border/60 px-2.5 py-1.5">
@@ -178,8 +156,9 @@ export function GamePanel() {
       </div>
 
       <p className="px-1 text-[10.5px] leading-relaxed text-muted-foreground/90">
-        Panel ruangan sementara berbasis React. Engine Phaser.js 2D isometrik hadir pada
-        Fase 2 pengembangan — kontrak event-nya sudah aktif sejak sekarang.
+        Ruangan dirender dengan Phaser.js (2D isometrik). Klik <strong>Ada</strong> untuk
+        berbicara, dan belanja dekorasi di <strong>Toko</strong> — barangnya langsung tampil
+        di ruangan ini.
       </p>
     </div>
   );

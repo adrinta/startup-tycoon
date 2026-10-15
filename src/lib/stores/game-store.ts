@@ -4,9 +4,10 @@ import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { QuestFileMap } from "@/content/quests/schema";
+import { computeBuffs, getShopItem } from "@/content/shop/items";
 
 /**
- * Penyimpanan progres LOKAL (adapter untuk M1).
+ * Penyimpanan progres LOKAL (adapter untuk M1–M2).
  *
  * Pada Fase 3 (M3), adapter `progress-repository` akan diganti dengan
  * implementasi Supabase (sinkronisasi cloud) TANPA mengubah API ini,
@@ -27,13 +28,19 @@ export interface QuestRewardInput {
   rewards: { coins: number; xp: number };
 }
 
+export type BuyItemResult =
+  | { ok: true }
+  | { ok: false; reason: "unknown" | "owned" | "insufficient" };
+
 interface GameState {
   revenue: number;
   activeUsers: number;
   completedQuestIds: string[];
   completedAt: Record<string, string>;
   drafts: Record<string, QuestFileMap>;
+  ownedItemIds: string[];
   completeQuest: (quest: QuestRewardInput) => QuestOutcome;
+  buyItem: (itemId: string) => BuyItemResult;
   saveDraft: (questId: string, files: QuestFileMap) => void;
   resetGame: () => void;
 }
@@ -80,6 +87,7 @@ export const useGameStore = create<GameState>()(
       completedQuestIds: [],
       completedAt: {},
       drafts: {},
+      ownedItemIds: [],
 
       completeQuest: (quest) => {
         const state = get();
@@ -96,11 +104,16 @@ export const useGameStore = create<GameState>()(
           };
         }
 
-        const newXp = state.activeUsers + quest.rewards.xp;
+        // Buff dekorasi kantor menambah reward (dibulatkan ke bawah).
+        const buffs = computeBuffs(state.ownedItemIds);
+        const coins = Math.floor(quest.rewards.coins * (1 + buffs.coinPct / 100));
+        const xp = Math.floor(quest.rewards.xp * (1 + buffs.xpPct / 100));
+
+        const newXp = state.activeUsers + xp;
         const newLevel = levelFromXp(newXp);
 
         set({
-          revenue: state.revenue + quest.rewards.coins,
+          revenue: state.revenue + coins,
           activeUsers: newXp,
           completedQuestIds: [...state.completedQuestIds, quest.id],
           completedAt: { ...state.completedAt, [quest.id]: new Date().toISOString() },
@@ -108,12 +121,27 @@ export const useGameStore = create<GameState>()(
 
         return {
           firstTime: true,
-          coins: quest.rewards.coins,
-          xp: quest.rewards.xp,
+          coins,
+          xp,
           previousLevel,
           newLevel,
           levelUp: newLevel > previousLevel,
         };
+      },
+
+      buyItem: (itemId) => {
+        const item = getShopItem(itemId);
+        if (!item) return { ok: false, reason: "unknown" };
+
+        const state = get();
+        if (state.ownedItemIds.includes(itemId)) return { ok: false, reason: "owned" };
+        if (state.revenue < item.cost) return { ok: false, reason: "insufficient" };
+
+        set({
+          revenue: state.revenue - item.cost,
+          ownedItemIds: [...state.ownedItemIds, itemId],
+        });
+        return { ok: true };
       },
 
       saveDraft: (questId, files) =>
@@ -128,11 +156,19 @@ export const useGameStore = create<GameState>()(
           completedQuestIds: [],
           completedAt: {},
           drafts: {},
+          ownedItemIds: [],
         }),
     }),
     {
       name: "startup-tycoon-save",
-      version: 1,
+      version: 2,
+      migrate: (persistedState, version) => {
+        const state = persistedState as Record<string, unknown>;
+        if (version < 2) {
+          state.ownedItemIds = Array.isArray(state.ownedItemIds) ? state.ownedItemIds : [];
+        }
+        return state as never;
+      },
     },
   ),
 );

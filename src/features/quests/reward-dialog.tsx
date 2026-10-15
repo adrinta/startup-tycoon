@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Coins, TrendingUp, Trophy } from "lucide-react";
+import { ArrowRight, Coins, Sparkles, TrendingUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,7 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Quest } from "@/content/quests/schema";
-import type { QuestOutcome } from "@/lib/stores/game-store";
+import { computeBuffs } from "@/content/shop/items";
+import { useGameStore, type QuestOutcome } from "@/lib/stores/game-store";
 import { formatNumber } from "@/lib/utils/format";
 
 export interface RewardDialogProps {
@@ -31,6 +32,12 @@ export function RewardDialog({
   onClose,
   onNextQuest,
 }: RewardDialogProps) {
+  const ownedItemIds = useGameStore((state) => state.ownedItemIds);
+  const buffs = computeBuffs(ownedItemIds);
+  const buffParts: string[] = [];
+  if (buffs.coinPct > 0) buffParts.push(`Koin +${buffs.coinPct}%`);
+  if (buffs.xpPct > 0) buffParts.push(`XP +${buffs.xpPct}%`);
+
   if (!quest || !outcome) return null;
 
   return (
@@ -70,6 +77,16 @@ export function RewardDialog({
           <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-center text-[12px] font-medium text-primary">
             ⚡ Level perusahaan naik: {outcome.previousLevel} → {outcome.newLevel}!
           </div>
+        )}
+
+        {buffParts.length > 0 && (
+          <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground">
+            <Sparkles className="h-3 w-3 text-primary" />
+            Termasuk bonus dekorasi kantor:
+            <span className="font-mono font-semibold text-primary">
+              {buffParts.join(" · ")}
+            </span>
+          </p>
         )}
 
         <DialogFooter className="sm:justify-center">

@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { questRepository } from "@/lib/services/quest-repository";
 import { localProgressRepository } from "@/lib/services/progress-repository";
+import { computeBuffs } from "@/content/shop/items";
 import {
   useGameStore,
   useGameStoreHydrated,
@@ -166,6 +167,8 @@ function QuestWorkspace({
   const runModeRef = useRef<"auto" | "deploy">("auto");
   const autoRunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const ownedItemIds = useGameStore((state) => state.ownedItemIds);
+  const buffs = useMemo(() => computeBuffs(ownedItemIds), [ownedItemIds]);
   const completed = completedQuestIds.includes(quest.id);
 
   useEffect(() => {
@@ -180,11 +183,13 @@ function QuestWorkspace({
 
   const scheduleAutoRun = useCallback(() => {
     if (autoRunTimerRef.current) clearTimeout(autoRunTimerRef.current);
+    // Buff Mesin Espresso mempercepat siklus pratinjau otomatis.
+    const fastPreview = computeBuffs(useGameStore.getState().ownedItemIds).fastPreview;
     autoRunTimerRef.current = setTimeout(() => {
       runModeRef.current = "auto";
       setConsoleEntries([]);
       setRunToken((token) => token + 1);
-    }, AUTO_RUN_DELAY_MS);
+    }, fastPreview ? 600 : AUTO_RUN_DELAY_MS);
   }, []);
 
   function handleEditorChange(nextValue: string) {
@@ -280,7 +285,7 @@ function QuestWorkspace({
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(430px,1fr)_minmax(400px,44%)]">
       <aside className="flex min-h-0 flex-col border-r border-border/60">
-        <GamePanel />
+        <GamePanel activeQuestTitle={quest.title} activeQuestHint={quest.hint ?? null} />
         <QuestTicketList
           quests={quests}
           selectedId={quest.id}
@@ -337,6 +342,7 @@ function QuestWorkspace({
             results={results}
             status={status}
             completed={completed}
+            hint={buffs.hintUnlocked ? (quest.hint ?? null) : null}
           />
         </div>
 

@@ -4,7 +4,9 @@ Game edukasi pemodelan web **full-stack** (HTML, CSS, JavaScript, PHP) berbungku
 
 Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storyline.md`](./storyline.md) (blueprint cerita & silabus).
 
-## Status: Milestone 1 — Vertical Slice Babak 1 (selesai)
+## Status: Milestone 2 — Game Layer Babak 1 (selesai)
+
+### Gameplay & Sandbox (M1)
 
 - **The Command Center** — layar tiga panel: ruangan game (kiri), Monaco Editor (tengah), preview + audit + Holo-Codex (kanan).
 - **Quest Engine** — misi 1.1–1.6 + Boss Fight "Audit Investor" dengan pembukaan bertahap (misi berikutnya terkunci sampai misi sebelumnya tuntas).
@@ -13,7 +15,14 @@ Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storylin
 - **Pratinjau otomatis + Deploy Code** — preview dan checklist objektif berjalan otomatis (debounce 1 detik); tombol **Deploy Code** (atau `Ctrl/⌘ + Enter`) melakukan audit resmi dan membagikan reward.
 - **Ekonomi lokal** — Revenue (koin) dan Active Users (XP) dengan level perusahaan, tersimpan di `localStorage`.
 - **Holo-Codex** — 7 artikel materi HTML ala W3Schools yang terhubung ke tiap misi.
-- **GamePanel placeholder React** dengan event bus yang sama yang akan dipakai Phaser.js di M2 (`quest:completed`, `bug:spawn`, dst.).
+
+### Game Layer (M2)
+
+- **Ruangan Phaser.js 2D isometrik** — garasi digambar secara prosedural (tanpa file aset): lantai papan-kotak, dua dinding, dan properti (meja+monitor, banner, rak produk, papan tulis, printer, zona kerja, trofi) yang muncul dengan animasi saat misinya selesai.
+- **NPC Ada** — klik untuk berkenalan/berdialog; bila buff "Petunjuk dari Ada" aktif, ia membacakan petunjuk misi yang sedang dikerjakan.
+- **Bug swarm** — audit yang gagal memunculkan bug yang merayap di ruangan garasi; otomatis terbang saat misi diselesaikan.
+- **Toko dekorasi & buff pasif** — 7 barang (Karpet, Tanaman, Lemari, Lampu, Kursi, Espresso, Server Rack) dengan efek nyata: XP +5/10/15%, Koin +5/10%, pratinjau otomatis lebih cepat (1 dtk → 0,6 dtk), dan petunjuk misi. Barang yang dibeli langsung tampil di ruangan pada posisi otomatisnya. Total harga katalog sengaja lebih besar dari total reward agar pemain harus memilih.
+- **Event bus tetap sama** — React tetap pemegang sumber kebenaran (zustand); scene Phaser hanya menyinkronkan visual (kontrak `quest:completed`, `bug:spawn`, dst. dari M1 tidak berubah).
 - **Tema terang** — antarmuka cerah dengan aksen cyan. Palet "Cyberpunk" gelap lama tetap tersimpan pada blok `.dark` di `globals.css`; tambahkan kembali kelas `dark` di `<html>` (`layout.tsx`) bila ingin mengaktifkannya.
 
 ## Menjalankan
@@ -64,7 +73,7 @@ src/
 | Milestone | Isi |
 | --- | --- |
 | ✅ M0–M1 | Bootstrap + vertical slice Babak 1 (HTML) |
-| M2 | Phaser.js scene isometrik garasi, shop & dekorasi, NPC |
+| ✅ M2 | Phaser.js scene isometrik garasi, toko & buff pasif, NPC, bug swarm |
 | M3 | Supabase Auth (Google SSO), sinkronisasi progres, leaderboard |
 | M4 | Babak 2 CSS: X-Ray Box Model, Flexbox/Grid visualizer, boss Pitching Day |
 | M5 | Babak 3 JS: Event Loop visualizer, boss Cyber Attack Defense |

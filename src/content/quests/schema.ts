@@ -69,6 +69,8 @@ export const questSchema = z.object({
     avatar: z.string().min(1),
   }),
   brief: z.string().min(1),
+  /** Petunjuk opsional — hanya ditampilkan bila pemain punya buff "hint". */
+  hint: z.string().optional(),
   instructions: z.array(z.string().min(1)).min(1),
   codexRefs: z.array(z.string()),
   starterFiles: z.record(z.string(), z.string()),

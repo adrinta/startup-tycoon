@@ -68,6 +68,7 @@ export const PHASE_1_QUESTS: Quest[] = [
     visualHook: "garage.monitor-on",
     visualNote:
       "Monitor CRT tua menyala — garis-garis hijau terminal menari di layar garasi.",
+    hint: "Setiap dokumen HTML selalu dibuka dengan <!DOCTYPE html>, baru diikuti elemen <html>. Judul tab browser ditulis di dalam pasangan <title>...</title> yang berada di <head>.",
   },
   {
     id: "1.2",
@@ -145,6 +146,7 @@ export const PHASE_1_QUESTS: Quest[] = [
     rewards: { coins: 60, xp: 30 },
     visualHook: "garage.banner",
     visualNote: "Banner Toko Kelontong Pak Budi terpasang di dinding garasi.",
+    hint: "Gunakan <strong> untuk menebalkan teks penting dan <em> untuk memiringkan penekanan. <mark> khusus menyorot teks. Kata kuncinya harus berada PERSIS di dalam pasangan tag tersebut, misal: <mark>Diskon 10%</mark>.",
   },
   {
     id: "1.3",
@@ -219,6 +221,7 @@ export const PHASE_1_QUESTS: Quest[] = [
     visualHook: "garage.rack",
     visualNote:
       "Rak garasi terisi sampel produk; kabel jaringan mulai terhubung rapi.",
+    hint: "Nilai atribut ditulis di dalam tanda kutip: <img src=\"gambar.jpg\" alt=\"deskripsi produk\">. Pastikan SEMUA gambar punya alt yang terisi, dan tautan ditulis lengkap, misal: <a href=\"https://wa.me/6281234567890\">.",
   },
   {
     id: "1.4",
@@ -297,6 +300,7 @@ export const PHASE_1_QUESTS: Quest[] = [
     rewards: { coins: 80, xp: 40 },
     visualHook: "garage.whiteboard",
     visualNote: "Papan tulis garasi penuh grafik keuangan dan catatan transaksi.",
+    hint: "colspan/rowspan adalah atribut pada sel: <th colspan=\"2\">Judul</th> menggabung dua kolom, <td rowspan=\"2\">Penjualan</td> menggabung dua baris. Hitung ulang jumlah <td> setelah menggabung sel.",
   },
   {
     id: "1.5",
@@ -380,6 +384,7 @@ export const PHASE_1_QUESTS: Quest[] = [
     rewards: { coins: 90, xp: 45 },
     visualHook: "garage.printer",
     visualNote: "Mesin cetak tua berderak mengeluarkan lembar pesanan klien.",
+    hint: "Hubungkan label dan input lewat id: <label for=\"nama\">Nama</label> lalu <input type=\"text\" id=\"nama\">. Jangan lupa <select> berisi minimal dua <option> dan checkbox persetujuan.",
   },
   {
     id: "1.6",
@@ -473,6 +478,7 @@ export const PHASE_1_QUESTS: Quest[] = [
     rewards: { coins: 100, xp: 50 },
     visualHook: "garage.zones",
     visualNote: "Garasi berantakan mendadak tertata: zona kerja kini rapi.",
+    hint: "Pindahkan konten yang sudah ada, jangan menulis ulang dari nol. Bungkus menu dengan <nav> di dalam <header>, dan pastikan <footer> tetap memuat teks © 2026.",
   },
   {
     id: "1.7",
@@ -600,5 +606,6 @@ export const PHASE_1_QUESTS: Quest[] = [
     rewards: { coins: 250, xp: 150 },
     visualHook: "garage.audit",
     visualNote: "Audit lolos! Investor mengangguk — pendanaan awal cair.",
+    hint: "Kerjakan bertahap: struktur dokumen dulu, lalu header+nav, main berisi hero dan tiga section fitur, form kontak, dan terakhir footer. Tekan Deploy Code di tengah pengerjaan untuk memeriksa progres.",
   },
 ];
