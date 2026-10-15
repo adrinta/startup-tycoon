@@ -92,7 +92,7 @@ export function CommandCenter() {
             <div className="text-[13px] font-semibold tracking-[0.15em]">
               STARTUP <span className="text-primary">TYCOON</span>
             </div>
-            <div className="font-mono text-[9.5px] uppercase tracking-[0.25em] text-muted-foreground">
+            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
               {quest.chapter} · {quest.location}
             </div>
           </div>
@@ -314,7 +314,7 @@ function QuestWorkspace({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden font-mono text-[10px] text-muted-foreground/70 xl:inline">
+              <span className="hidden font-mono text-[10px] text-muted-foreground/90 xl:inline">
                 Ctrl/⌘ + Enter
               </span>
               <Button
@@ -347,13 +347,13 @@ function QuestWorkspace({
         >
           <div className="shrink-0 border-b border-border/60 px-2 pt-1.5">
             <TabsList variant="line" className="h-8 w-full justify-start">
-              <TabsTrigger value="preview" className="flex-none px-3">
+              <TabsTrigger value="preview" className="flex-none px-3 text-foreground/75">
                 Preview
               </TabsTrigger>
-              <TabsTrigger value="console" className="flex-none px-3">
+              <TabsTrigger value="console" className="flex-none px-3 text-foreground/75">
                 Console{consoleEntries.length > 0 ? ` (${consoleEntries.length})` : ""}
               </TabsTrigger>
-              <TabsTrigger value="codex" className="flex-none px-3">
+              <TabsTrigger value="codex" className="flex-none px-3 text-foreground/75">
                 Holo-Codex
               </TabsTrigger>
             </TabsList>

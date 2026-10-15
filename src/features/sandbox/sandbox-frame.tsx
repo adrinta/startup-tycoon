@@ -146,7 +146,7 @@ export function SandboxFrame({
           <div className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
             Preview Standby
           </div>
-          <p className="max-w-xs text-xs leading-relaxed text-muted-foreground/80">
+          <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
             Tekan <span className="font-semibold text-primary">Deploy Code</span> untuk
             mengeksekusi kode-mu di sandbox, atau mulai mengetik untuk pratinjau otomatis.
           </p>

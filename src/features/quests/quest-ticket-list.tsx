@@ -77,9 +77,9 @@ export function QuestTicketList({
               {completed ? (
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
               ) : unlocked ? (
-                <LockOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 group-hover:text-primary" />
+                <LockOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 group-hover:text-primary" />
               ) : (
-                <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
               )}
             </button>
           );
@@ -89,7 +89,7 @@ export function QuestTicketList({
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             Babak 2: Seed Funding
           </div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground/80">
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
             Co-Working Space & materi CSS — segera hadir.
           </div>
         </div>

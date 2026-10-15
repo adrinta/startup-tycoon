@@ -116,7 +116,7 @@ export default function HomePage() {
                   className={
                     phase.active
                       ? "rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-center"
-                      : "rounded-md border border-border bg-muted/50 px-3 py-1.5 text-center opacity-70"
+                      : "rounded-md border border-border bg-muted/50 px-3 py-1.5 text-center opacity-80"
                   }
                 >
                   <div className="font-mono text-[10px] uppercase tracking-[0.2em]">

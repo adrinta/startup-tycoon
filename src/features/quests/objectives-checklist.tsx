@@ -84,7 +84,7 @@ export function ObjectivesChecklist({
             >
               <div className="flex items-start gap-2">
                 {state === "pending" && (
-                  <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                  <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
                 )}
                 {state === "passed" && (
                   <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
@@ -107,7 +107,7 @@ export function ObjectivesChecklist({
       </ul>
 
       {results && hasFails && (
-        <p className="px-1 text-[10.5px] leading-relaxed text-muted-foreground/80">
+        <p className="px-1 text-[10.5px] leading-relaxed text-muted-foreground">
           Terminal tidak memberi jawaban langsung — baca detail masalah di atas, cek pasangan
           tag, lalu deploy ulang.
         </p>

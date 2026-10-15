@@ -127,7 +127,7 @@ export function GamePanel() {
               key={slot.hook}
               animate={{
                 scale: isHighlighted ? 1.06 : 1,
-                opacity: unlocked ? 1 : 0.5,
+                opacity: unlocked ? 1 : 0.6,
               }}
               transition={{ type: "spring", stiffness: 320, damping: 22 }}
               className={cn(
@@ -137,11 +137,11 @@ export function GamePanel() {
               )}
             >
               <span className="text-xl leading-none">{slot.emoji}</span>
-              <span className="px-1 text-center font-mono text-[8.5px] uppercase tracking-wider text-muted-foreground">
+              <span className="px-1 text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {slot.label}
               </span>
               {!unlocked && (
-                <Lock className="absolute right-1 top-1 h-2.5 w-2.5 text-muted-foreground/50" />
+                <Lock className="absolute right-1 top-1 h-2.5 w-2.5 text-muted-foreground/70" />
               )}
             </motion.div>
           );
@@ -151,7 +151,7 @@ export function GamePanel() {
       <div className="rounded-md border border-border/70 bg-muted/40">
         <div className="flex items-center gap-1.5 border-b border-border/60 px-2.5 py-1.5">
           <Terminal className="h-3 w-3 text-emerald-600" />
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.25em] text-muted-foreground">
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
             Umpan Ruangan
           </span>
         </div>
@@ -163,13 +163,13 @@ export function GamePanel() {
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 className={cn(
-                  "font-mono text-[10px] leading-relaxed",
+                  "font-mono text-[10.5px] leading-relaxed",
                   entry.tone === "info" && "text-muted-foreground",
                   entry.tone === "success" && "text-emerald-600",
                   entry.tone === "danger" && "text-red-600",
                 )}
               >
-                <span className="text-muted-foreground/50">» </span>
+                <span className="text-muted-foreground/70">» </span>
                 {entry.text}
               </motion.p>
             ))}
@@ -177,7 +177,7 @@ export function GamePanel() {
         </div>
       </div>
 
-      <p className="px-1 text-[9.5px] leading-relaxed text-muted-foreground/70">
+      <p className="px-1 text-[10.5px] leading-relaxed text-muted-foreground/90">
         Panel ruangan sementara berbasis React. Engine Phaser.js 2D isometrik hadir pada
         Fase 2 pengembangan — kontrak event-nya sudah aktif sejak sekarang.
       </p>

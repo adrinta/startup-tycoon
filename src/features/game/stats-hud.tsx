@@ -31,7 +31,7 @@ export function StatsHud({ onAfterReset }: StatsHudProps) {
       <div className="flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5">
         <Coins className="h-3.5 w-3.5 text-amber-600" />
         <div className="leading-none">
-          <div className="font-mono text-[8.5px] uppercase tracking-[0.2em] text-amber-700/80">
+          <div className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-amber-700">
             Revenue
           </div>
           <div className="font-mono text-[12px] font-semibold text-amber-800">
@@ -43,7 +43,7 @@ export function StatsHud({ onAfterReset }: StatsHudProps) {
       <div className="flex items-center gap-1.5 rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1.5">
         <TrendingUp className="h-3.5 w-3.5 text-cyan-600" />
         <div className="leading-none">
-          <div className="font-mono text-[8.5px] uppercase tracking-[0.2em] text-cyan-700/80">
+          <div className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-cyan-700">
             Active Users
           </div>
           <div className="font-mono text-[12px] font-semibold text-cyan-800">
@@ -54,10 +54,10 @@ export function StatsHud({ onAfterReset }: StatsHudProps) {
 
       <div className="hidden w-36 flex-col gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 lg:flex">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[8.5px] uppercase tracking-[0.2em] text-muted-foreground">
+          <span className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-muted-foreground">
             Level {levelInfo.level}
           </span>
-          <span className="font-mono text-[8.5px] text-muted-foreground/70">
+          <span className="font-mono text-[9.5px] text-muted-foreground">
             {levelInfo.currentLevelXp}/{levelInfo.nextLevelXp}
           </span>
         </div>

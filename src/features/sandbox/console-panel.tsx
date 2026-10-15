@@ -12,9 +12,9 @@ export function ConsolePanel({ entries }: ConsolePanelProps) {
   if (entries.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 bg-muted/30 p-6 text-center">
-        <TerminalSquare className="h-5 w-5 text-muted-foreground/60" />
-        <p className="max-w-xs text-[11px] leading-relaxed text-muted-foreground/80">
-          Console bersih. Pesan <span className="font-mono text-primary/90">console.log</span>{" "}
+        <TerminalSquare className="h-5 w-5 text-muted-foreground/70" />
+        <p className="max-w-xs text-[11px] leading-relaxed text-muted-foreground">
+          Console bersih. Pesan <span className="font-mono text-primary">console.log</span>{" "}
           dan error JavaScript dari kode-mu akan tampil di sini.
         </p>
       </div>

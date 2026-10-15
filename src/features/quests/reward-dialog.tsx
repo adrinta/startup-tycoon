@@ -49,7 +49,7 @@ export function RewardDialog({
 
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-center">
-            <div className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-amber-700/80">
+            <div className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-amber-700">
               <Coins className="h-3 w-3" /> Revenue
             </div>
             <div className="mt-1 font-mono text-lg font-semibold text-amber-800">
@@ -57,7 +57,7 @@ export function RewardDialog({
             </div>
           </div>
           <div className="rounded-md border border-cyan-200 bg-cyan-50 p-3 text-center">
-            <div className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-700/80">
+            <div className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-700">
               <TrendingUp className="h-3 w-3" /> XP
             </div>
             <div className="mt-1 font-mono text-lg font-semibold text-cyan-800">

@@ -67,7 +67,7 @@ export function QuestBrief({ quest, completed }: QuestBriefProps) {
               <span
                 className={cn(
                   "font-mono text-[11px] leading-5",
-                  quest.isBoss ? "text-red-600" : "text-primary/80",
+                  quest.isBoss ? "text-red-600" : "text-primary",
                 )}
               >
                 {String(index + 1).padStart(2, "0")}.
@@ -91,7 +91,7 @@ export function QuestBrief({ quest, completed }: QuestBriefProps) {
               {ref}
             </span>
           ))}
-          <span className="text-[10px] text-muted-foreground/70">
+          <span className="text-[10.5px] text-muted-foreground">
             → buka tab Holo-Codex di panel kanan
           </span>
         </div>
