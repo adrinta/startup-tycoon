@@ -390,7 +390,164 @@ const CSS_ARTICLES: CodexArticle[] = [
   },
 ];
 
-export const CODEX_ARTICLES: CodexArticle[] = [...HTML_ARTICLES, ...CSS_ARTICLES];
+const JS_ARTICLES: CodexArticle[] = [
+  {
+    id: "js-variabel",
+    title: "Variabel, Tipe Data & Function",
+    summary: "Fondasi JavaScript: menyimpan nilai dan membungkus logika.",
+    tags: ["js", "dasar", "function"],
+    sections: [
+      {
+        heading: "let, const, dan tipe data",
+        body:
+          "`let` untuk nilai yang berubah, `const` untuk yang tetap. Tipe dasar: string (teks dalam tanda kutip), number (angka), boolean (true/false), dan object/array (kumpulan nilai).",
+        code: 'const PAJAK = 0.11;\nlet skor = 0;\nconst nama = "Project X";',
+      },
+      {
+        heading: "Function: membungkus logika",
+        body:
+          "Function menerima parameter dan mengembalikan nilai dengan `return`. Tanpa return, hasilnya undefined. Panggil fungsinya dengan nama + tanda kurung.",
+        code: "function hitungTotal(harga, jumlah) {\n  return harga * jumlah;\n}\n\nhitungTotal(10000, 3); // 30000",
+      },
+      {
+        heading: "String berguna: toLocaleString",
+        body:
+          '`nilai.toLocaleString("id-ID")` menambahkan titik ribuan sesuai format Indonesia: 15000 menjadi "15.000". Cocok digabung dengan string: `"Rp " + ...`.',
+        code: 'const teks = "Rp " + 15000..toLocaleString("id-ID"); // "Rp 15.000"',
+      },
+    ],
+  },
+  {
+    id: "js-kondisi",
+    title: "Kondisi & Alur Kendali",
+    summary: "if/else, switch, dan logika bertingkat untuk mengambil keputusan.",
+    tags: ["js", "kondisi", "if", "switch"],
+    sections: [
+      {
+        heading: "if / else if / else",
+        body:
+          "Program memeriksa kondisi dari atas ke bawah dan menjalankan blok pertama yang benar. Urutkan dari yang paling spesifik/mendesak ke umum.",
+        code: 'function cekStok(stok, batas) {\n  if (stok < batas) {\n    return "Kritis";\n  }\n  return "Aman";\n}',
+      },
+      {
+        heading: "switch untuk pilihan diskrit",
+        body:
+          "`switch` membandingkan satu nilai dengan beberapa `case`. Jangan lupa `break` agar tidak jatuh ke case berikutnya. `default` menangani sisanya.",
+        code: 'function statusKuota(persen) {\n  if (persen >= 90) return "kritis";\n  if (persen >= 75) return "peringatan";\n  return "normal";\n}\n\nswitch (level) {\n  case 1: return "pemula";\n  case 2: return "mahir";\n  default: return "epik";\n}',
+      },
+      {
+        heading: "Operator pembanding & logika",
+        body:
+          "`===` membandingkan nilai DAN tipe (selalu pakai ini). `&&` (dan), `||` (atau), `!` (bukan). Contoh bertingkat: `hari >= 1 && hari <= 3`.",
+      },
+    ],
+  },
+  {
+    id: "js-array",
+    title: "Array, Object & Loop",
+    summary: "Mengolah banyak data: menyaring, mengubah, mencari, merangkum.",
+    tags: ["js", "array", "object", "loop"],
+    sections: [
+      {
+        heading: "Array of objects",
+        body:
+          "Data nyata biasanya kumpulan object: `[{ nama: \"Ani\", aktif: true }, ...]`. Akses dengan indeks (`daftar[0]`) atau olah dengan method.",
+        code: "const pelanggan = [\n  { nama: \"Ani\", aktif: true },\n  { nama: \"Dewi\", aktif: false },\n];",
+      },
+      {
+        heading: "filter, map, find",
+        body:
+          "`filter` menyaring item yang lolos kondisi, `map` mengubah tiap item menjadi bentuk baru, `find` mengambil satu item pertama (atau undefined). Semuanya mengembalikan array/objek BARU tanpa mengubah aslinya.",
+        code: 'const aktif = pelanggan.filter(function (p) { return p.aktif; });\nconst nama = aktif.map(function (p) { return p.nama; });\nconst budi = pelanggan.find(function (p) { return p.nama === "Budi"; });',
+      },
+      {
+        heading: "Loop for klasik untuk merangkum",
+        body:
+          "Untuk menghitung statistik, loop indeks klasik paling transparan. Kembalikan object hasilnya.",
+        code: "function ringkasan(daftar) {\n  let aktif = 0;\n  let nonaktif = 0;\n  for (let i = 0; i < daftar.length; i += 1) {\n    if (daftar[i].aktif) aktif += 1;\n    else nonaktif += 1;\n  }\n  return { aktif: aktif, nonaktif: nonaktif };\n}",
+      },
+    ],
+  },
+  {
+    id: "js-dom",
+    title: "DOM Manipulation & Event",
+    summary: "Membuat halaman merespons aksi pengguna.",
+    tags: ["js", "dom", "event"],
+    sections: [
+      {
+        heading: "Memilih & mengubah elemen",
+        body:
+          "`document.querySelector(\"#id\")` mengambil elemen pertama yang cocok. Ubah isinya lewat `textContent`; ubah class lewat `classList.add/remove/toggle/contains`.",
+        code: 'const sapaan = document.querySelector("#sapaan");\nsapaan.textContent = "Halo, Founder!";\nsektor.classList.add("bug");',
+      },
+      {
+        heading: "Event listener",
+        body:
+          "`addEventListener(\"click\", callback)` menjalankan fungsi setiap kali event terjadi. Callback menerima `event` — pakai `event.preventDefault()` untuk membatalkan perilaku bawaan (mis. reload saat submit).",
+        code: 'document.querySelector("#tombol").addEventListener("click", function () {\n  document.querySelector("#sapaan").textContent = "Halo!";\n});',
+      },
+      {
+        heading: "Membuat elemen baru",
+        body:
+          "`document.createElement(\"li\")` membuat elemen, isi dengan `textContent`, lalu tempelkan dengan `appendChild` ke induknya. Untuk menghapus: `element.remove()`.",
+        code: 'const item = document.createElement("li");\nitem.textContent = "Tamu " + nomor;\ndocument.querySelector("#daftar").appendChild(item);',
+      },
+    ],
+  },
+  {
+    id: "js-validasi",
+    title: "Validasi Form, String & try-catch",
+    summary: "Menjaga data tetap bersih sebelum diproses.",
+    tags: ["js", "validasi", "string", "error"],
+    sections: [
+      {
+        heading: "Validasi email sederhana",
+        body:
+          'Sebelum mengirim, periksa: kosong? tidak ada "@" atau "."? Kembalikan pesan yang jelas per kasus. Ingat `event.preventDefault()` agar halaman tidak reload saat submit.',
+        code: 'form.addEventListener("submit", function (event) {\n  event.preventDefault();\n  const email = input.value.trim();\n  if (email === "") pesan.textContent = "Email wajib diisi.";\n  else if (!email.includes("@") || !email.includes(".")) pesan.textContent = "Format email tidak valid.";\n  else pesan.textContent = "Pendaftaran berhasil!";\n});',
+      },
+      {
+        heading: "Method string yang sering dipakai",
+        body:
+          "`trim()` membuang spasi ujung, `toLowerCase()` menurunkan semua huruf, `includes()` memeriksa potongan teks, `replace()` mengganti bagian teks.",
+        code: 'function bersihkanNama(teks) {\n  return teks.trim().toLowerCase();\n}',
+      },
+      {
+        heading: "try / catch: menangani error",
+        body:
+          "Kode berisiko dibungkus `try`. Bila ada error (termasuk yang kamu lempar sendiri dengan `throw`), eksekusi lompat ke `catch` — pakai untuk memberi nilai cadangan yang aman.",
+        code: 'function parseUang(teks) {\n  try {\n    const angka = Number(teks);\n    if (Number.isNaN(angka)) throw new Error("bukan angka");\n    return angka;\n  } catch (error) {\n    return null;\n  }\n}',
+      },
+    ],
+  },
+  {
+    id: "js-async",
+    title: "Asynchronous, Promise & Fetch",
+    summary: "Mengambil data dari server tanpa membekukan halaman.",
+    tags: ["js", "async", "promise", "fetch"],
+    sections: [
+      {
+        heading: "Kenapa asynchronous?",
+        body:
+          "Mengambil data butuh waktu. JavaScript tidak menunggu diam — ia melanjutkan kode lain, lalu menjalankan callback ketika data tiba. Itulah Event Loop: kode sinkron selesai dulu, callback async menyusul.",
+      },
+      {
+        heading: "fetch + then",
+        body:
+          '`fetch(url)` mengembalikan Promise berisi Response. `res.json()` adalah Promise kedua untuk mem-parse body. Selalu periksa `res.ok` untuk kasus gagal (status ≥ 400).',
+        code: 'fetch("https://api.projectx.test/kurs")\n  .then(function (res) { return res.json(); })\n  .then(function (data) {\n    document.querySelector("#kurs").textContent =\n      "1 USD = Rp " + data.usd.toLocaleString("id-ID");\n  });',
+      },
+      {
+        heading: "async / await",
+        body:
+          "`await` membuat kode async terasa seperti berurutan — hanya boleh dipakai di dalam function `async`. Bungkus dengan try/catch untuk menangkap kegagalan.",
+        code: 'async function muatKurs() {\n  const res = await fetch("/api/kurs");\n  const data = await res.json();\n  console.log(data);\n}',
+      },
+    ],
+  },
+];
+
+export const CODEX_ARTICLES: CodexArticle[] = [...HTML_ARTICLES, ...CSS_ARTICLES, ...JS_ARTICLES];
 
 export function getCodexArticle(id: string): CodexArticle | undefined {
   return CODEX_ARTICLES.find((article) => article.id === id);

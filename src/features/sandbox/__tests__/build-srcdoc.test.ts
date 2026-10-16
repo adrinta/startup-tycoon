@@ -79,4 +79,25 @@ describe("script capture & harness", () => {
     expect(script).toContain("ready");
     expect(script).toContain("EVALUATE");
   });
+
+  it("menyuntikkan mock fetch sebelum kode mahasiswa", () => {
+    const output = buildSrcdoc(
+      { "index.html": "<!DOCTYPE html><html><body></body></html>", "app.js": "fetch('/x')" },
+      "n4",
+      { mocks: [{ url: "api.projectx.test/kurs", json: { usd: 16250 }, delayMs: 150 }] },
+    );
+    expect(output).toContain("window.fetch = function");
+    expect(output).toContain("api.projectx.test/kurs");
+    expect(output.indexOf("window.fetch = function")).toBeLessThan(
+      output.indexOf("fetch('/x')"),
+    );
+  });
+
+  it("tanpa mocks tidak ada tambalan fetch", () => {
+    const output = buildSrcdoc(
+      { "index.html": "<!DOCTYPE html><html><body></body></html>" },
+      "n5",
+    );
+    expect(output).not.toContain("window.fetch = function");
+  });
 });

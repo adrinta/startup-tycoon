@@ -8,7 +8,7 @@
  * - `gx/gy`  : koordinat sel pada grid isometrik.
  */
 
-export type RoomStage = "garage" | "coworking";
+export type RoomStage = "garage" | "coworking" | "tower";
 
 export type PropBuilder =
   | "desk-monitor"
@@ -30,7 +30,14 @@ export type PropBuilder =
   | "poster"
   | "wall-clock"
   | "cargo-shelf"
-  | "tablet-stand";
+  | "tablet-stand"
+  | "dashboard-screen"
+  | "alarm-beacon"
+  | "conveyor"
+  | "ticker"
+  | "gate-robot"
+  | "antenna"
+  | "shield-dome";
 
 export interface PropDef {
   key: string;
@@ -70,6 +77,15 @@ export const ROOM_PROPS: PropDef[] = [
   { key: "cargo-shelf", builder: "cargo-shelf", hook: "cowork.flex", gx: 3.5, gy: 1.3, stage: "coworking" },
   { key: "tablet", builder: "tablet-stand", hook: "cowork.tablet", gx: 2.5, gy: 2.6, stage: "coworking" },
   { key: "trophy-pitch", builder: "trophy", hook: "cowork.pitch", gx: 1.4, gy: 2.4, stage: "coworking" },
+
+  // Babak 3 — High-Rise Tower Lantai 15 (JavaScript).
+  { key: "dashboard", builder: "dashboard-screen", hook: "tower.dashboard", gx: 2.5, gy: 0, stage: "tower" },
+  { key: "alarm", builder: "alarm-beacon", hook: "tower.alarm", gx: 0, gy: 2.0, stage: "tower" },
+  { key: "conveyor", builder: "conveyor", hook: "tower.conveyor", gx: 2.5, gy: 3.9, stage: "tower" },
+  { key: "ticker", builder: "ticker", hook: "tower.ticker", gx: 0, gy: 3.6, stage: "tower" },
+  { key: "gate-robot", builder: "gate-robot", hook: "tower.robot", gx: 1.3, gy: 1.7, stage: "tower" },
+  { key: "antenna", builder: "antenna", hook: "tower.antenna", gx: 4.2, gy: 1.5, stage: "tower" },
+  { key: "dome", builder: "shield-dome", hook: "tower.dome", gx: 2.5, gy: 2.5, stage: "tower" },
 
   // Barang toko (tampil di panggung mana pun).
   { key: "plant", builder: "plant", itemId: "tanaman-hias", gx: 0.7, gy: 4.3 },

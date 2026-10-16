@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import { QUESTS, getQuestById } from "@/content/quests";
-import { questSchema, type QuestFileMap } from "@/content/quests/schema";
+import { questSchema, type MockApi, type QuestFileMap } from "@/content/quests/schema";
 import {
   QUEST_BROKEN_SAMPLES,
   QUEST_SOLUTIONS,
@@ -13,11 +13,13 @@ import type { Objective } from "@/content/quests/schema";
 
 /**
  * Dokumen uji dibangun lewat `buildSrcdoc` yang sama dengan aplikasi
- * (style.css disuntikkan ke <style>), lalu dieksekusi di JSDOM sehingga
- * aturan `computed` benar-benar mengukur cascade stylesheet.
+ * (style.css disuntikkan ke <style>, script dijalankan), lalu dieksekusi
+ * di JSDOM sehingga aturan dom, computed, dan js diukur apa adanya.
  */
-function buildTestDocument(files: QuestFileMap): Document {
-  return new JSDOM(buildSrcdoc(files, "test-nonce")).window.document;
+function buildTestDocument(files: QuestFileMap, mocks?: MockApi[]): Document {
+  return new JSDOM(buildSrcdoc(files, "test-nonce", { mocks }), {
+    runScripts: "dangerously",
+  }).window.document;
 }
 
 function nonViewportObjectives(questId: string): Objective[] {
@@ -26,10 +28,14 @@ function nonViewportObjectives(questId: string): Objective[] {
   return quest.objectives.filter((objective) => objectiveViewport(objective) === null);
 }
 
-function failedIds(questId: string, files: QuestFileMap, objectives: Objective[]): string[] {
-  return evaluateObjectives(buildTestDocument(files), objectives)
-    .filter((result) => !result.passed)
-    .map((result) => result.id);
+async function failedIds(
+  questId: string,
+  files: QuestFileMap,
+  objectives: Objective[],
+): Promise<string[]> {
+  const quest = getQuestById(questId);
+  const results = await evaluateObjectives(buildTestDocument(files, quest?.mocks), objectives);
+  return results.filter((result) => !result.passed).map((result) => result.id);
 }
 
 describe("integritas katalog quest", () => {
@@ -79,37 +85,49 @@ describe("integritas katalog quest", () => {
 
 describe("solusi kanonik lulus semua objective non-viewport", () => {
   for (const quest of QUESTS) {
-    it(`quest ${quest.id} — ${quest.title}`, () => {
-      const objectives = nonViewportObjectives(quest.id);
-      const failed = failedIds(quest.id, QUEST_SOLUTIONS[quest.id], objectives);
-      expect(failed, `objective yang gagal: ${failed.join(", ")}`).toEqual([]);
-    });
+    it(
+      `quest ${quest.id} — ${quest.title}`,
+      async () => {
+        const objectives = nonViewportObjectives(quest.id);
+        const failed = await failedIds(quest.id, QUEST_SOLUTIONS[quest.id], objectives);
+        expect(failed, `objective yang gagal: ${failed.join(", ")}`).toEqual([]);
+      },
+      30000,
+    );
   }
 });
 
 describe("starter code masih menantang (belum lulus)", () => {
   for (const quest of QUESTS) {
-    it(`quest ${quest.id} starter belum menyelesaikan misi`, () => {
-      const objectives = nonViewportObjectives(quest.id);
-      const results = evaluateObjectives(
-        buildTestDocument(quest.starterFiles),
-        objectives,
-      );
-      expect(
-        results.some((result) => !result.passed),
-        `starter quest ${quest.id} sudah lulus semua objective yang teruji`,
-      ).toBe(true);
-    });
+    it(
+      `quest ${quest.id} starter belum menyelesaikan misi`,
+      async () => {
+        const objectives = nonViewportObjectives(quest.id);
+        const results = await evaluateObjectives(
+          buildTestDocument(quest.starterFiles, quest.mocks),
+          objectives,
+        );
+        expect(
+          results.some((result) => !result.passed),
+          `starter quest ${quest.id} sudah lulus semua objective yang teruji`,
+        ).toBe(true);
+      },
+      30000,
+    );
   }
 });
 
 describe("varian kode rusak harus terdeteksi", () => {
   for (const [questId, sample] of Object.entries(QUEST_BROKEN_SAMPLES)) {
-    it(`quest ${questId} gagal pada objective "${sample.expectFailed}"`, () => {
-      const quest = getQuestById(questId);
-      if (!quest) throw new Error(`Quest ${questId} tidak ditemukan`);
-      const failed = failedIds(questId, sample.files, quest.objectives);
-      expect(failed).toContain(sample.expectFailed);
-    });
+    it(
+      `quest ${questId} gagal pada objective "${sample.expectFailed}"`,
+      async () => {
+        const quest = getQuestById(questId);
+        if (!quest) throw new Error(`Quest ${questId} tidak ditemukan`);
+        const failed = await failedIds(questId, sample.files, quest.objectives);
+        expect(failed).toContain(sample.expectFailed);
+      },
+      30000,
+    );
   }
 });

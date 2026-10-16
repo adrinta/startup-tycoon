@@ -4,9 +4,11 @@ import type { ObjectiveResult } from "@/features/validation/types";
 import {
   VIEWPORT_DIMENSIONS,
   dimensionForWidth,
+  filterObjectivesForAutoRun,
   groupObjectivesByViewport,
   mergeGroupResults,
   objectiveViewport,
+  ruleContainsWaitFor,
   viewportWidthOf,
 } from "@/features/sandbox/viewport";
 
@@ -101,5 +103,41 @@ describe("mergeGroupResults", () => {
     const merged = mergeGroupResults(objectives, new Map([["a", { id: "a", passed: true }]]));
     expect(merged[1].passed).toBe(false);
     expect(merged[1].detail).toContain("tidak selesai");
+  });
+});
+
+describe("filter untuk pratinjau otomatis (waitFor lambat)", () => {
+  it("mendeteksi waitFor langsung maupun di dalam allOf", () => {
+    expect(ruleContainsWaitFor({ kind: "waitFor", test: "true" })).toBe(true);
+    expect(
+      ruleContainsWaitFor({
+        kind: "allOf",
+        rules: [
+          { kind: "click", selector: "#a" },
+          { kind: "waitFor", test: "true" },
+        ],
+      }),
+    ).toBe(true);
+    expect(ruleContainsWaitFor({ kind: "dom", selector: "div" })).toBe(false);
+  });
+
+  it("menyaring objective ber-waitFor dari pratinjau otomatis", () => {
+    const objectives: Objective[] = [
+      makeObjective("statis"),
+      { id: "lambat", label: "lambat", rule: { kind: "waitFor", test: "true" } },
+      {
+        id: "gabungan",
+        label: "gabungan",
+        rule: {
+          kind: "allOf",
+          rules: [
+            { kind: "click", selector: "#x" },
+            { kind: "waitFor", test: "true" },
+          ],
+        },
+      },
+    ];
+    const filtered = filterObjectivesForAutoRun(objectives);
+    expect(filtered.map((objective) => objective.id)).toEqual(["statis"]);
   });
 });

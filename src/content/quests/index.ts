@@ -1,9 +1,10 @@
 import { PHASE_1_QUESTS } from "@/content/quests/phase1";
 import { PHASE_2_QUESTS } from "@/content/quests/phase2";
+import { PHASE_3_QUESTS } from "@/content/quests/phase3";
 import type { Quest } from "@/content/quests/schema";
 
-/** Registry seluruh quest yang sudah tersedia. Babak 3–4 menyusul. */
-export const QUESTS: Quest[] = [...PHASE_1_QUESTS, ...PHASE_2_QUESTS].sort(
+/** Registry seluruh quest yang sudah tersedia. Babak 4 menyusul. */
+export const QUESTS: Quest[] = [...PHASE_1_QUESTS, ...PHASE_2_QUESTS, ...PHASE_3_QUESTS].sort(
   (a, b) => a.order - b.order,
 );
 

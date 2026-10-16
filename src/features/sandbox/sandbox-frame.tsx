@@ -3,17 +3,19 @@
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildSrcdoc, type FileMap } from "@/features/sandbox/build-srcdoc";
+import type { MockApiDefinition } from "@/features/sandbox/harness";
 import {
   VIEWPORT_DIMENSIONS,
   dimensionForWidth,
+  filterObjectivesForAutoRun,
   groupObjectivesByViewport,
-  mergeGroupResults,
   viewportWidthOf,
   type PreviewViewport,
 } from "@/features/sandbox/viewport";
 import {
   isFrameMessage,
   type ConsoleEntry,
+  type LoopTimerEvent,
   type Objective,
   type ObjectiveResult,
 } from "@/features/validation/types";
@@ -23,14 +25,17 @@ export interface SandboxFrameProps {
   objectives: Objective[];
   /** Naikkan nilai ini untuk menjalankan ulang frame. */
   runToken: number;
-  /** true (Deploy) = audit semua viewport; false (auto-preview) = viewport aktif saja. */
+  /** true (Deploy) = audit semua viewport & seluruh objektif; false (auto) = cepat. */
   fullAudit: boolean;
   viewport: PreviewViewport;
   xrayEnabled: boolean;
+  /** Endpoint API tiruan (quest.mocks) — dipasang sebelum kode mahasiswa. */
+  mocks?: MockApiDefinition[];
   onConsole?: (entry: ConsoleEntry) => void;
   onRuntimeError?: (message: string) => void;
   onValidationResult?: (results: ObjectiveResult[]) => void;
   onTimeout?: () => void;
+  onLoopTimer?: (event: LoopTimerEvent) => void;
   timeoutMs?: number;
 }
 
@@ -59,10 +64,12 @@ export function SandboxFrame({
   fullAudit,
   viewport,
   xrayEnabled,
+  mocks,
   onConsole,
   onRuntimeError,
   onValidationResult,
   onTimeout,
+  onLoopTimer,
   timeoutMs = 3000,
 }: SandboxFrameProps) {
   const [srcDoc, setSrcDoc] = useState<string | null>(null);
@@ -82,10 +89,12 @@ export function SandboxFrame({
   const fullAuditRef = useRef(fullAudit);
   const viewportRef = useRef(viewport);
   const xrayRef = useRef(xrayEnabled);
+  const mocksRef = useRef(mocks);
   const onConsoleRef = useRef(onConsole);
   const onRuntimeErrorRef = useRef(onRuntimeError);
   const onValidationResultRef = useRef(onValidationResult);
   const onTimeoutRef = useRef(onTimeout);
+  const onLoopTimerRef = useRef(onLoopTimer);
 
   useEffect(() => {
     filesRef.current = files;
@@ -93,10 +102,12 @@ export function SandboxFrame({
     fullAuditRef.current = fullAudit;
     viewportRef.current = viewport;
     xrayRef.current = xrayEnabled;
+    mocksRef.current = mocks;
     onConsoleRef.current = onConsole;
     onRuntimeErrorRef.current = onRuntimeError;
     onValidationResultRef.current = onValidationResult;
     onTimeoutRef.current = onTimeout;
+    onLoopTimerRef.current = onLoopTimer;
   });
 
   /* Ukur lebar wadah agar preview viewport tetap bisa di-zoom-out (fit). */
@@ -130,7 +141,7 @@ export function SandboxFrame({
 
     pendingRef.current = { nonce };
     resolversRef.current.clear();
-    setSrcDoc(buildSrcdoc(filesRef.current, nonce));
+    setSrcDoc(buildSrcdoc(filesRef.current, nonce, { mocks: mocksRef.current }));
     setRunning(true);
 
     if (globalTimeoutRef.current) clearTimeout(globalTimeoutRef.current);
@@ -176,7 +187,14 @@ export function SandboxFrame({
       // Mulai dari layout dasar (layout override validasi sebelumnya dibersihkan).
       setValidationLayout(null);
       const allObjectives = objectivesRef.current;
-      let groups = groupObjectivesByViewport(allObjectives);
+
+      // Auto-run: lewati objektif ber-waitFor (lambat) & fokus viewport aktif.
+      let targets = allObjectives;
+      if (!fullAuditRef.current) {
+        targets = filterObjectivesForAutoRun(allObjectives);
+      }
+
+      let groups = groupObjectivesByViewport(targets);
 
       if (!fullAuditRef.current) {
         const currentWidth = viewportWidthOf(viewportRef.current);
@@ -208,7 +226,14 @@ export function SandboxFrame({
 
       setValidationLayout(null);
       setRunning(false);
-      onValidationResultRef.current?.(mergeGroupResults(allObjectives, collected));
+      // Kirim hanya objective yang benar-benar diperiksa (sparse) — sisanya
+      // mempertahankan hasil sebelumnya di sisi React.
+      const ordered: ObjectiveResult[] = [];
+      for (const objective of allObjectives) {
+        const result = collected.get(objective.id);
+        if (result) ordered.push(result);
+      }
+      onValidationResultRef.current?.(ordered);
     }
 
     function handleMessage(event: MessageEvent) {
@@ -237,6 +262,14 @@ export function SandboxFrame({
           break;
         case "runtime-error":
           onRuntimeErrorRef.current?.(data.message);
+          break;
+        case "loop-timer-start":
+        case "loop-timer-fire":
+          onLoopTimerRef.current?.({
+            type: data.type,
+            label: data.label,
+            delay: data.delay,
+          });
           break;
         case "validation-result": {
           const resolver = resolversRef.current.get(data.requestId);

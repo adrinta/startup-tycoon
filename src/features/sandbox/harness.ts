@@ -12,12 +12,34 @@ import type { Objective, ObjectiveResult, Rule } from "@/features/validation/typ
  *  - Versi yang sama dipakai unit test (jsdom) sehingga perilaku di sandbox
  *    dan di test identik.
  */
-export function evaluateObjectives(doc: Document, objectives: Objective[]): ObjectiveResult[] {
+export async function evaluateObjectives(
+  doc: Document,
+  objectives: Objective[],
+): Promise<ObjectiveResult[]> {
   function getElements(selector: string): Element[] {
     const list = doc.querySelectorAll(selector);
     const out: Element[] = [];
     for (let i = 0; i < list.length; i += 1) out.push(list[i]);
     return out;
+  }
+
+  function evaluateJsExpression(expression: string): unknown {
+    const view = doc.defaultView as
+      | (Window & { eval: (source: string) => unknown })
+      | null;
+    if (view !== null && view !== undefined && typeof view.eval === "function") {
+      return view.eval("(" + expression + ")");
+    }
+    const runner = new Function("return (" + expression + ");");
+    return runner();
+  }
+
+  function waitForTick(ms: number): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const callback = () => resolve();
+      (callback as unknown as { __stInternal?: boolean }).__stInternal = true;
+      setTimeout(callback, ms);
+    });
   }
 
   function normalize(value: string): string {
@@ -137,7 +159,7 @@ export function evaluateObjectives(doc: Document, objectives: Objective[]): Obje
     return count;
   }
 
-  function evaluateOne(rule: Rule): { passed: boolean; detail?: string } {
+  async function evaluateOne(rule: Rule): Promise<{ passed: boolean; detail?: string }> {
     try {
       if (rule.kind === "doctype") {
         const dt = doc.doctype;
@@ -316,10 +338,96 @@ export function evaluateObjectives(doc: Document, objectives: Objective[]): Obje
 
       if (rule.kind === "allOf") {
         for (let i = 0; i < rule.rules.length; i += 1) {
-          const sub = evaluateOne(rule.rules[i]);
+          const sub = await evaluateOne(rule.rules[i]);
           if (!sub.passed) return sub;
         }
         return { passed: true };
+      }
+
+      if (rule.kind === "js") {
+        try {
+          const value = evaluateJsExpression(rule.test);
+          if (typeof value === "string") return { passed: false, detail: value };
+          if (value) return { passed: true };
+          return { passed: false, detail: "Hasil ekspresi uji belum sesuai harapan." };
+        } catch (error) {
+          return {
+            passed: false,
+            detail:
+              "Ekspresi uji error: " +
+              (error instanceof Error ? error.message : String(error)),
+          };
+        }
+      }
+
+      if (rule.kind === "click") {
+        const elements = getElements(rule.selector);
+        if (elements.length === 0) {
+          return { passed: false, detail: 'Belum ada elemen "' + rule.selector + '" untuk diklik.' };
+        }
+        const target = elements[0] as HTMLElement;
+        if (typeof target.click === "function") {
+          target.click();
+        } else {
+          target.dispatchEvent(new Event("click", { bubbles: true, cancelable: true }));
+        }
+        return { passed: true };
+      }
+
+      if (rule.kind === "input") {
+        const elements = getElements(rule.selector);
+        if (elements.length === 0) {
+          return { passed: false, detail: 'Belum ada elemen "' + rule.selector + '" untuk diisi.' };
+        }
+        const target = elements[0] as HTMLInputElement;
+        target.value = rule.value;
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        return { passed: true };
+      }
+
+      if (rule.kind === "submit") {
+        const elements = getElements(rule.selector);
+        if (elements.length === 0) {
+          return { passed: false, detail: 'Belum ada elemen "' + rule.selector + '" untuk disubmit.' };
+        }
+        elements[0].dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+        return { passed: true };
+      }
+
+      if (rule.kind === "waitFor") {
+        const timeout = rule.timeoutMs === undefined ? 1500 : rule.timeoutMs;
+        const startedAt = Date.now();
+        let lastDetail = "";
+        for (;;) {
+          try {
+            const value = evaluateJsExpression(rule.test);
+            if (typeof value === "string") {
+              // String = "belum siap, ini alasannya" — tetap polling.
+              lastDetail = value;
+            } else if (value) {
+              return { passed: true };
+            } else {
+              lastDetail = "";
+            }
+          } catch (error) {
+            return {
+              passed: false,
+              detail:
+                "Ekspresi uji error: " +
+                (error instanceof Error ? error.message : String(error)),
+            };
+          }
+          if (Date.now() - startedAt >= timeout) {
+            return {
+              passed: false,
+              detail:
+                lastDetail !== ""
+                  ? lastDetail
+                  : "Kondisi belum terpenuhi setelah " + timeout + " ms.",
+            };
+          }
+          await waitForTick(70);
+        }
       }
 
       return { passed: false, detail: "Aturan validasi tidak dikenali." };
@@ -334,7 +442,7 @@ export function evaluateObjectives(doc: Document, objectives: Objective[]): Obje
   const results: ObjectiveResult[] = [];
   for (let i = 0; i < objectives.length; i += 1) {
     const objective = objectives[i];
-    const outcome = evaluateOne(objective.rule);
+    const outcome = await evaluateOne(objective.rule);
     results.push({ id: objective.id, passed: outcome.passed, detail: outcome.detail });
   }
   return results;
@@ -493,7 +601,103 @@ export function createXrayRuntime(doc: Document): XrayController {
   };
 }
 
+/* ------------------------------- Mock fetch --------------------------------- */
+
+export interface MockApiDefinition {
+  url: string;
+  json: unknown;
+  status?: number;
+  delayMs?: number;
+}
+
+/**
+ * Menambal window.fetch dengan endpoint tiruan (untuk misi async).
+ * Mock dengan kecocokan URL terpanjang yang menang; sisanya diteruskan
+ * ke fetch asli bila ada.
+ */
+export function buildMockFetchScript(mocks: MockApiDefinition[]): string {
+  const serialized = JSON.stringify(mocks);
+  return [
+    "(function () {",
+    "  var MOCKS = " + serialized + ";",
+    "  if (!MOCKS || MOCKS.length === 0) return;",
+    "  var originalFetch = window.fetch ? window.fetch.bind(window) : null;",
+    "  window.fetch = function (input, init) {",
+    "    var url = typeof input === 'string' ? input : (input && input.url ? input.url : String(input));",
+    "    var best = null;",
+    "    for (var i = 0; i < MOCKS.length; i += 1) {",
+    "      var mock = MOCKS[i];",
+    "      if (url.indexOf(mock.url) !== -1) {",
+    "        if (best === null || mock.url.length > best.url.length) best = mock;",
+    "      }",
+    "    }",
+    "    if (best === null) {",
+    "      if (originalFetch) return originalFetch(input, init);",
+    "      return Promise.reject(new Error('fetch tidak tersedia di sandbox'));",
+    "    }",
+    "    var status = best.status === undefined ? 200 : best.status;",
+    "    var bodyText = JSON.stringify(best.json);",
+    "    return new Promise(function (resolve) {",
+    "      var done = function () {",
+    "        resolve({",
+    "          ok: status >= 200 && status < 300,",
+    "          status: status,",
+    "          json: function () { return Promise.resolve(best.json); },",
+    "          text: function () { return Promise.resolve(bodyText); },",
+    "        });",
+    "      };",
+    "      var delay = best.delayMs === undefined ? 120 : best.delayMs;",
+    "      if (delay > 0) {",
+    "        var timer = function () { done(); };",
+    "        timer.__stInternal = true;",
+    "        window.setTimeout(timer, delay);",
+    "      } else {",
+    "        done();",
+    "      }",
+    "    });",
+    "  };",
+    "})();",
+  ].join("\n");
+}
+
 /* --------------------------------- Scripts --------------------------------- */
+
+/**
+ * Beberapa transpiler (esbuild/tsx keepNames, dsb.) menyuntikkan pemanggilan
+ * helper seperti `__name(...)` ke dalam fungsi. Karena evaluator & X-Ray
+ * dikirim ke sandbox lewat `Function.prototype.toString()`, helper itu harus
+ * didefinisikan agar sumber tetap mandiri di lingkungan mana pun. Di build
+ * produksi yang tidak menyuntik helper, shim ini sekadar tidak terpakai.
+ */
+const TRANSPILER_HELPER_SHIMS = [
+  "var __name = function (target) { return target; };",
+  "var __defProp = Object.defineProperty;",
+  "var __defNormalProp = function (obj, key, value) {",
+  "  return key in obj",
+  "    ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value: value })",
+  "    : (obj[key] = value);",
+  "};",
+  "var __publicField = function (obj, key, value) {",
+  "  return __defNormalProp(obj, typeof key !== 'symbol' ? key + '' : key, value);",
+  "};",
+  "var __spreadValues = function (target, source) {",
+  "  for (var key in source) {",
+  "    if (Object.prototype.hasOwnProperty.call(source, key)) target[key] = source[key];",
+  "  }",
+  "  return target;",
+  "};",
+].join("\n    ");
+
+/** Membungkus fungsi menjadi sumber JS mandiri beserta shim helper. */
+export function toSandboxSource<T extends (...args: never[]) => unknown>(fn: T): string {
+  return (
+    "(function () {\n    " +
+    TRANSPILER_HELPER_SHIMS +
+    "\n    return (" +
+    fn.toString() +
+    ");\n  })()"
+  );
+}
 
 /** Script capture console + error hook. Disuntik SEBELUM kode mahasiswa. */
 export function buildCaptureScript(nonce: string): string {
@@ -518,6 +722,21 @@ export function buildCaptureScript(nonce: string): string {
     "    message.nonce = NONCE;",
     "    try { parent.postMessage(message, '*'); } catch (e) {}",
     "  };",
+    "  var originalSetTimeout = window.setTimeout ? window.setTimeout.bind(window) : null;",
+    "  if (originalSetTimeout) {",
+    "    window.setTimeout = function (callback, delay) {",
+    "      var args = Array.prototype.slice.call(arguments, 2);",
+    "      var label = callback && callback.name ? callback.name : 'callback';",
+    "      var report = !(callback && callback.__stInternal);",
+    "      var wrapped = function () {",
+    "        if (report) window.__stSend({ type: 'loop-timer-fire', label: label });",
+    "        if (typeof callback === 'function') callback.apply(null, args);",
+    "      };",
+    "      var timerId = originalSetTimeout(wrapped, delay);",
+    "      if (report) window.__stSend({ type: 'loop-timer-start', label: label, delay: delay || 0 });",
+    "      return timerId;",
+    "    };",
+    "  }",
     "  var levels = ['log', 'info', 'warn', 'error', 'debug'];",
     "  for (var i = 0; i < levels.length; i += 1) {",
     "    (function (level) {",
@@ -551,8 +770,8 @@ export function buildHarnessScript(nonce: string): string {
   void nonce; // nonce sudah dipasang oleh capture script melalui window.__stSend.
   return [
     "(function () {",
-    "  var EVALUATE = " + evaluateObjectives.toString() + ";",
-    "  var XRAY = " + createXrayRuntime.toString() + "(document);",
+    "  var EVALUATE = " + toSandboxSource(evaluateObjectives) + ";",
+    "  var XRAY = " + toSandboxSource(createXrayRuntime) + "(document);",
     "  window.addEventListener('message', function (event) {",
     "    var data = event ? event.data : null;",
     "    if (!data) return;",
@@ -561,24 +780,26 @@ export function buildHarnessScript(nonce: string): string {
     "      return;",
     "    }",
     "    if (data.type !== 'validate') return;",
-    "    var results = [];",
+    "    var objectivesList = data.objectives || [];",
+    "    var resultsPromise;",
     "    try {",
-    "      results = EVALUATE(document, data.objectives || []);",
+    "      resultsPromise = Promise.resolve(EVALUATE(document, objectivesList));",
     "    } catch (error) {",
-    "      results = [];",
+    "      resultsPromise = Promise.resolve(null);",
     "    }",
-    "    if (!results || results.length === 0) {",
-    "      var objectives = data.objectives || [];",
-    "      results = [];",
-    "      for (var i = 0; i < objectives.length; i += 1) {",
-    "        results.push({",
-    "          id: objectives[i].id,",
-    "          passed: false,",
-    "          detail: 'Evaluator gagal dimuat di sandbox. Coba deploy ulang.',",
-    "        });",
+    "    resultsPromise.then(function (results) {",
+    "      if (!results || results.length === 0) {",
+    "        results = [];",
+    "        for (var i = 0; i < objectivesList.length; i += 1) {",
+    "          results.push({",
+    "            id: objectivesList[i].id,",
+    "            passed: false,",
+    "            detail: 'Evaluator gagal dimuat di sandbox. Coba deploy ulang.',",
+    "          });",
+    "        }",
     "      }",
-    "    }",
-    "    window.__stSend({ type: 'validation-result', requestId: data.requestId, results: results });",
+    "      window.__stSend({ type: 'validation-result', requestId: data.requestId, results: results });",
+    "    });",
     "  });",
     "  window.__stSend({ type: 'ready' });",
     "})();",

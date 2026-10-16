@@ -4,9 +4,9 @@ Game edukasi pemodelan web **full-stack** (HTML, CSS, JavaScript, PHP) berbungku
 
 Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storyline.md`](./storyline.md) (blueprint cerita & silabus).
 
-## Status: Milestone 4 — Babak 2: Seed Funding (selesai)
+## Status: Milestone 5 — Babak 3: Growth Hack (selesai)
 
-> Tiga babak dapat dimainkan: Babak 1 (HTML, Garasi), Babak 2 (CSS, Co-Working Space) — termasuk boss *Pitching Day* dengan audit 3 viewport. Aplikasi tetap berjalan sempurna dalam Mode Lokal tanpa konfigurasi cloud.
+> Tiga dari empat babak dapat dimainkan: HTML (Garasi), CSS (Co-Working Space, + boss Pitching Day), dan JavaScript (High-Rise Tower, + boss Cyber Attack Defense). Aplikasi tetap berjalan sempurna dalam Mode Lokal tanpa konfigurasi cloud.
 
 ### Gameplay & Sandbox (M1)
 
@@ -46,6 +46,16 @@ Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storylin
 - **Co-Working Space** — ruangan Phaser berpindah panggung saat memasuki Babak 2: palet dinding/lantai hangat + 7 properti baru (papan neon, beanbag, poster, jam dinding, rak kargo, tablet demo, trofi pitching) yang muncul per misi. Barang toko ikut pindah lokasi.
 - **Tiket per babak** — daftar misi dikelompokkan per babak dengan teaser Babak 3 (JavaScript).
 
+### Babak 3 & Runner JavaScript (M5)
+
+- **7 misi JS** — 3.1 Kalkulator Pendapatan (variabel & function), 3.2 Sistem Alarm Otomatis (kondisi & switch), 3.3 Analisis Massal (array, loop, object), 3.4 Interaksi Pengguna (DOM & event), 3.5 Filter Keamanan Form (validasi, string, try-catch), 3.6 Koneksi Server Luar (async/await & fetch), dan boss **3.7 Cyber Attack Defense** — pertahanan bertimer dengan serangan bug acak yang disimulasikan saat audit (±15 dtk).
+- **Aturan validasi JS baru** — `js` (ekspresi uji dijalankan di realm sandbox; truthy = lulus, string = pesan gagal, error dilaporkan apa adanya), `click`/`input`/`submit` (simulasi interaksi pengguna sungguhan), dan `waitFor` (polling kondisi async dengan pesan "belum siap" yang informatif). `allOf` kini bisa merangkai interaksi + pemeriksaan (mis. input → submit → cek pesan).
+- **Mock fetch** — server API tiruan (`api.projectx.test`) dipasang ke `window.fetch` sebelum kode mahasiswa, lengkap dengan delay, status 500 untuk latihan penanganan kegagalan, dan pemilihan mock berdasarkan kecocokan URL terpanjang.
+- **Visualizer Event Loop** — instrumentasi `setTimeout` nyata dari kode mahasiswa: chip bergerak dari **Call Stack → Web APIs (dengan durasi) → Callback Queue** saat callback dijalankan; timer internal (mock & evaluator) ditandai agar tidak berisik.
+- **Audit adaptif** — pratinjau otomatis melewati objektif `waitFor` (cepat), sedangkan **Deploy** menjalankan audit penuh; misi boss hanya diaudit saat Deploy dengan chip "audit ±15 dtk".
+- **High-Rise Tower Lantai 15** — panggung ruangan ketiga (palet biru kaca) dengan 7 properti baru: dasbor pendapatan, lampu alarm, ban berjalan, papan kehadiran, robot penjaga, antena parabola, dan kubah perisai boss.
+- **Perlindungan lintas-transpiler** — sumber evaluator & X-Ray dibungkus shim helper (`__name` dll.) sehingga tetap mandiri di dev, test, maupun hasil minifikasi produksi.
+
 ## Menjalankan
 
 ```bash
@@ -58,7 +68,7 @@ pnpm dev          # http://localhost:3000
 | `pnpm dev` | Dev server (Turbopack) |
 | `pnpm build` | Build produksi + typecheck |
 | `pnpm start` | Jalankan hasil build |
-| `pnpm test` | 117 test: integritas quest, evaluator (dom/gaya/computed), viewport, sandbox end-to-end, ekonomi/buff, sync, domain email |
+| `pnpm test` | 145 test: integritas quest, evaluator (dom/gaya/js/interaksi/waitFor), viewport, sandbox end-to-end, ekonomi, sync, domain |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint (termasuk aturan React Compiler) |
 | `pnpm db:push` | Dorong schema Prisma ke database (butuh `DATABASE_URL`/`DIRECT_URL`) |
@@ -154,7 +164,7 @@ Email di luar domain terdaftar ditolak saat callback OAuth (termasuk subdomain, 
 | ✅ M2 | Phaser.js scene isometrik garasi, toko & buff pasif, NPC, bug swarm |
 | ✅ M3 | Supabase Auth (Google SSO), onboarding, sinkronisasi progres, leaderboard |
 | ✅ M4 | Babak 2 CSS: X-Ray Box Model, Flexbox/Grid, boss Pitching Day (audit 3 viewport) |
-| M5 | Babak 3 JS: Event Loop visualizer, boss Cyber Attack Defense |
+| ✅ M5 | Babak 3 JS: runner js/klik/input, Event Loop visualizer, mock fetch, boss Cyber Attack Defense |
 | M6 | Babak 4 PHP-WASM + virtual SQLite, boss IPO |
 | M7 | Dashboard dosen, ekspor ZIP, polish performa & keamanan |
 

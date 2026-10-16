@@ -1,4 +1,4 @@
-import type { Objective, ObjectiveResult } from "@/features/validation/types";
+import type { Objective, ObjectiveResult, Rule } from "@/features/validation/types";
 
 export type PreviewViewport = "fit" | "desktop" | "tablet" | "mobile";
 
@@ -36,6 +36,21 @@ export function objectiveViewport(objective: Objective): number | null {
 
 export function hasViewportObjectives(objectives: Objective[]): boolean {
   return objectives.some((objective) => objectiveViewport(objective) !== null);
+}
+
+/** true bila aturan (termasuk di dalam allOf) memakai polling waitFor. */
+export function ruleContainsWaitFor(rule: Rule): boolean {
+  if (rule.kind === "waitFor") return true;
+  if (rule.kind === "allOf") return rule.rules.some(ruleContainsWaitFor);
+  return false;
+}
+
+/**
+ * Filter untuk pratinjau otomatis: buang objektif ber-waitFor yang lambat
+ * (kode async / boss bertimer) — audit penuhnya berjalan saat Deploy.
+ */
+export function filterObjectivesForAutoRun(objectives: Objective[]): Objective[] {
+  return objectives.filter((objective) => !ruleContainsWaitFor(objective.rule));
 }
 
 export interface ObjectiveGroup {

@@ -163,6 +163,15 @@ const STAGE_PALETTES: Record<
     panelLine: 0xe4d7c6,
     rim: 0xd8c8b2,
   },
+  tower: {
+    floorA: 0xeef4fa,
+    floorB: 0xdfe9f4,
+    floorLine: 0xcfdded,
+    leftWall: 0xeef2f8,
+    rightWall: 0xd9e4f0,
+    panelLine: 0xc3d3e4,
+    rim: 0xb3c6da,
+  },
 };
 
 function depthFor(def: PropDef): number {
@@ -171,11 +180,15 @@ function depthFor(def: PropDef): number {
     def.builder === "whiteboard" ||
     def.builder === "neon-sign" ||
     def.builder === "poster" ||
-    def.builder === "wall-clock"
+    def.builder === "wall-clock" ||
+    def.builder === "dashboard-screen" ||
+    def.builder === "ticker" ||
+    def.builder === "alarm-beacon"
   ) {
     return -1;
   }
   if (def.builder === "rug") return 1;
+  if (def.builder === "shield-dome") return 120;
   const base = 10 + (def.gx + def.gy) * 10;
   return def.builder === "trophy" ? base + 2 : base;
 }
@@ -443,6 +456,20 @@ export class GarageScene extends Phaser.Scene {
         return this.buildCargoShelf(def.gx, def.gy);
       case "tablet-stand":
         return this.buildTabletStand(def.gx, def.gy);
+      case "dashboard-screen":
+        return this.buildDashboardScreen(def.gx);
+      case "alarm-beacon":
+        return this.buildAlarmBeacon(def.gy);
+      case "conveyor":
+        return this.buildConveyor(def.gx, def.gy);
+      case "ticker":
+        return this.buildTicker(def.gy);
+      case "gate-robot":
+        return this.buildGateRobot(def.gx, def.gy);
+      case "antenna":
+        return this.buildAntenna(def.gx, def.gy);
+      case "shield-dome":
+        return this.buildShieldDome(def.gx, def.gy);
       default:
         return null;
     }
@@ -901,6 +928,203 @@ export class GarageScene extends Phaser.Scene {
     g.fillStyle(0xe0f2fe, 0.9);
     g.fillCircle(10, -26, 1.6);
     c.add(g);
+    return c;
+  }
+
+  /* ---------------------------------- Tower Lantai 15 ---------------------------------- */
+
+  private buildDashboardScreen(gx: number): Phaser.GameObjects.Container {
+    const c = this.add.container(0, 0);
+    const u1 = gx - 1.7;
+    const u2 = gx + 1.7;
+    const h1 = 40;
+    const h2 = 80;
+
+    const g = this.add.graphics();
+    const quad = [
+      wallPoint("right", u1, h1),
+      wallPoint("right", u2, h1),
+      wallPoint("right", u2, h2),
+      wallPoint("right", u1, h2),
+    ];
+    fillQuad(g, quad, 0x0f172a);
+    g.lineStyle(2, 0x334155, 1);
+    g.strokePoints(quad, true);
+
+    // Grafik batang pendapatan.
+    const bars: Array<[number, number, number]> = [
+      [0.16, 12, 0x22d3ee],
+      [0.34, 20, 0x34d399],
+      [0.52, 15, 0x22d3ee],
+      [0.7, 26, 0xfbbf24],
+      [0.86, 22, 0x34d399],
+    ];
+    for (const [pos, height, color] of bars) {
+      const bx1 = u1 + (u2 - u1) * (pos - 0.05);
+      const bx2 = u1 + (u2 - u1) * (pos + 0.05);
+      fillQuad(
+        g,
+        [
+          wallPoint("right", bx1, h1 + 7),
+          wallPoint("right", bx2, h1 + 7),
+          wallPoint("right", bx2, h1 + 7 + height),
+          wallPoint("right", bx1, h1 + 7 + height),
+        ],
+        color,
+        0.9,
+      );
+    }
+
+    // Judul gilir + indikator hidup.
+    const title = wallPoint("right", gx - 1.1, h2 - 9);
+    g.fillStyle(0x94a3b8, 0.9);
+    g.fillCircle(title.x, title.y, 2.5);
+    const live = wallPoint("right", gx + 1.2, h2 - 9);
+    const liveDot = this.add.graphics();
+    liveDot.fillStyle(0x4ade80, 1);
+    liveDot.fillCircle(live.x, live.y, 3);
+    this.tweens.add({ targets: liveDot, alpha: 0.35, duration: 800, yoyo: true, repeat: -1 });
+
+    c.add([g, liveDot]);
+    return c.setDepth(-1);
+  }
+
+  private buildAlarmBeacon(gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(0, 0);
+    const g = this.add.graphics();
+    const center = wallPoint("left", gy, 74);
+    const glow = this.add.graphics();
+    glow.fillStyle(0xef4444, 0.25);
+    glow.fillCircle(center.x, center.y, 16);
+    g.fillStyle(0xfecaca, 1);
+    g.fillCircle(center.x, center.y, 9);
+    g.fillStyle(0xef4444, 1);
+    g.fillCircle(center.x, center.y, 6);
+    g.lineStyle(2, 0xb91c1c, 1);
+    g.strokeCircle(center.x, center.y, 9);
+    c.add([glow, g]);
+    this.tweens.add({ targets: glow, alpha: 0.9, duration: 700, yoyo: true, repeat: -1 });
+    return c.setDepth(-1);
+  }
+
+  private buildConveyor(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 96, 24);
+    drawIsoBox(g, 0, 0, 1.7, 0.5, 0, 8, PALETTES.slate);
+
+    // Kargo berjalan di atas ban.
+    drawIsoBox(g, -30, 0, 0.28, 0.34, 8, 11, PALETTES.amberBox);
+    drawIsoBox(g, 4, -2, 0.28, 0.34, 8, 11, PALETTES.cyanBox);
+    drawIsoBox(g, 30, 1, 0.28, 0.34, 8, 11, PALETTES.redBox);
+
+    // Arah aliran.
+    g.lineStyle(1.5, 0xe2e8f0, 0.8);
+    for (let i = 0; i < 3; i += 1) {
+      const x = -46 + i * 14;
+      g.lineBetween(x, 10, x + 6, 13);
+      g.lineBetween(x + 6, 13, x, 16);
+    }
+    c.add(g);
+    return c;
+  }
+
+  private buildTicker(gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(0, 0);
+    const u1 = gy - 1.6;
+    const u2 = gy + 1.6;
+    const h1 = 48;
+    const h2 = 59;
+
+    const g = this.add.graphics();
+    const quad = [
+      wallPoint("left", u1, h1),
+      wallPoint("left", u2, h1),
+      wallPoint("left", u2, h2),
+      wallPoint("left", u1, h2),
+    ];
+    fillQuad(g, quad, 0x1e293b);
+
+    const dots = this.add.graphics();
+    const colors = [0x22d3ee, 0xfbbf24, 0x34d399, 0xf472b6, 0x22d3ee, 0xa78bfa];
+    for (let i = 0; i < colors.length; i += 1) {
+      const p = wallPoint("left", u1 + (u2 - u1) * (0.12 + i * 0.15), (h1 + h2) / 2);
+      dots.fillStyle(colors[i], 1);
+      dots.fillCircle(p.x, p.y, 2.4);
+    }
+    c.add([g, dots]);
+    this.tweens.add({ targets: dots, alpha: 0.35, duration: 900, yoyo: true, repeat: -1 });
+    return c.setDepth(-1);
+  }
+
+  private buildGateRobot(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 34, 12);
+    drawIsoBox(g, 0, 0, 0.42, 0.4, 0, 22, PALETTES.slate);
+    const head = isoBoxPoints(0, -2, 0.34, 0.28, 22, 13);
+    drawBox(g, head, PALETTES.server);
+
+    // Mata pemindai.
+    const eyeLeft = ptLerp(head.leftB, head.frontB, 0.32, 7);
+    const eyeRight = ptLerp(head.leftB, head.frontB, 0.62, 7);
+    const eyes = this.add.graphics();
+    eyes.fillStyle(0x22d3ee, 1);
+    eyes.fillCircle(eyeLeft.x, eyeLeft.y, 2.2);
+    eyes.fillCircle(eyeRight.x, eyeRight.y, 2.2);
+
+    // Antena berkedip.
+    drawIsoBox(g, 0, -2, 0.05, 0.05, 35, 8, PALETTES.slate);
+    const tip = this.add.graphics();
+    tip.fillStyle(0xef4444, 1);
+    tip.fillCircle(0, -46, 2.4);
+
+    c.add([g, eyes, tip]);
+    this.tweens.add({ targets: tip, alpha: 0.3, duration: 650, yoyo: true, repeat: -1 });
+    return c;
+  }
+
+  private buildAntenna(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 30, 11);
+    drawIsoBox(g, 0, 0, 0.12, 0.12, 0, 30, PALETTES.slate);
+
+    // Piringan parabola (stilasi).
+    g.fillStyle(0xdbeafe, 1);
+    g.fillCircle(0, -38, 11);
+    g.fillStyle(0x93c5fd, 1);
+    g.fillCircle(-2, -36, 6);
+    g.lineStyle(2, 0x64748b, 1);
+    g.lineBetween(0, -30, 0, -38);
+    g.lineBetween(0, -38, 8, -30);
+
+    const blink = this.add.graphics();
+    blink.fillStyle(0x22d3ee, 1);
+    blink.fillCircle(8, -30, 2);
+    c.add([g, blink]);
+    this.tweens.add({ targets: blink, alpha: 0.25, duration: 750, yoyo: true, repeat: -1 });
+    return c;
+  }
+
+  private buildShieldDome(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const dome = this.add.graphics();
+    dome.fillStyle(0x38bdf8, 0.09);
+    dome.fillEllipse(0, -34, 250, 130);
+    dome.lineStyle(2, 0x38bdf8, 0.4);
+    dome.strokeEllipse(0, -34, 250, 130);
+    dome.lineStyle(1, 0x7dd3fc, 0.35);
+    dome.strokeEllipse(0, -34, 190, 96);
+    c.add(dome);
+    this.tweens.add({
+      targets: dome,
+      alpha: 0.55,
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut",
+    });
     return c;
   }
 

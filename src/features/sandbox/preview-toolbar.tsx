@@ -1,6 +1,6 @@
 "use client";
 
-import { Maximize2, Monitor, ScanSearch, Smartphone, Tablet } from "lucide-react";
+import { Maximize2, Monitor, ScanSearch, Smartphone, Tablet, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VIEWPORT_DIMENSIONS, type PreviewViewport } from "@/features/sandbox/viewport";
 
@@ -28,6 +28,9 @@ export interface PreviewToolbarProps {
   onViewportChange: (viewport: PreviewViewport) => void;
   xray: boolean;
   onXrayChange: (enabled: boolean) => void;
+  eventLoop: boolean;
+  onEventLoopChange: (enabled: boolean) => void;
+  showEventLoop: boolean;
 }
 
 export function PreviewToolbar({
@@ -35,6 +38,9 @@ export function PreviewToolbar({
   onViewportChange,
   xray,
   onXrayChange,
+  eventLoop,
+  onEventLoopChange,
+  showEventLoop,
 }: PreviewToolbarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-border/70 bg-muted/30 px-2 py-1">
@@ -80,6 +86,23 @@ export function PreviewToolbar({
               </span>
             ))}
           </span>
+        )}
+        {showEventLoop && (
+          <button
+            type="button"
+            title="Event Loop — lihat timer dan callback kode kamu"
+            aria-pressed={eventLoop}
+            onClick={() => onEventLoopChange(!eventLoop)}
+            className={cn(
+              "flex items-center gap-1 rounded px-1.5 py-1 font-mono text-[10px] transition-colors",
+              eventLoop
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+            )}
+          >
+            <Timer className="h-3.5 w-3.5" />
+            Event Loop
+          </button>
         )}
         <button
           type="button"

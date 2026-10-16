@@ -40,11 +40,13 @@ describe("progresi & pembukaan misi", () => {
     expect(getFirstPlayableQuestId(allIds)).toBe(allIds[allIds.length - 1]);
   });
 
-  it("getNext mengembalikan misi berikutnya dan undefined di akhir babak", () => {
+  it("getNext mengembalikan misi berikutnya dan undefined di akhir babak terakhir", () => {
     expect(getNextQuest("1.1")?.id).toBe("1.2");
     expect(getNextQuest("1.6")?.id).toBe("1.7");
     expect(getNextQuest("1.7")?.id).toBe("2.1");
     expect(getNextQuest("2.6")?.id).toBe("2.7");
-    expect(getNextQuest("2.7")).toBeUndefined();
+    expect(getNextQuest("2.7")?.id).toBe("3.1");
+    expect(getNextQuest("3.6")?.id).toBe("3.7");
+    expect(getNextQuest("3.7")).toBeUndefined();
   });
 });

@@ -1,6 +1,16 @@
-import { buildCaptureScript, buildHarnessScript } from "@/features/sandbox/harness";
+import {
+  buildCaptureScript,
+  buildHarnessScript,
+  buildMockFetchScript,
+  type MockApiDefinition,
+} from "@/features/sandbox/harness";
 
 export type FileMap = Record<string, string>;
+
+export interface BuildSrcdocOptions {
+  /** Endpoint API tiruan yang dipasang ke window.fetch sebelum kode mahasiswa. */
+  mocks?: MockApiDefinition[];
+}
 
 const EDITOR_PLACEHOLDER =
   "<p>Belum ada kode. Tulis HTML-mu di editor, lalu panel ini akan menampilkan hasilnya.</p>";
@@ -16,17 +26,25 @@ const EDITOR_PLACEHOLDER =
  *   3. kode mahasiswa  (index.html + app.js)
  *   4. script harness  (evaluasi objektif + kirim "ready")
  */
-export function buildSrcdoc(files: FileMap, nonce: string): string {
+export function buildSrcdoc(
+  files: FileMap,
+  nonce: string,
+  options: BuildSrcdocOptions = {},
+): string {
   const html = files["index.html"] ?? EDITOR_PLACEHOLDER;
   const css = files["style.css"] ?? "";
   const js = files["app.js"] ?? "";
 
   const captureScript = `<script>\n${buildCaptureScript(nonce)}\n</script>`;
+  const mockScript =
+    options.mocks && options.mocks.length > 0
+      ? `<script>\n${buildMockFetchScript(options.mocks)}\n</script>`
+      : "";
   const userScript = js.trim() !== "" ? `<script>\n${escapeTagCloser(js, "script")}\n</script>` : "";
   const harnessScript = `<script>\n${buildHarnessScript(nonce)}\n</script>`;
   const styleTag = css.trim() !== "" ? `<style>\n${escapeTagCloser(css, "style")}\n</style>` : "";
 
-  const tailScripts = [userScript, harnessScript].filter(Boolean).join("\n");
+  const tailScripts = [mockScript, userScript, harnessScript].filter(Boolean).join("\n");
 
   /*
    * Fragmen HTML (tanpa <html>) sengaja TIDAK dibungkus doctype/struktur

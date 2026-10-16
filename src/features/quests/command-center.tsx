@@ -16,12 +16,14 @@ import { QuestBrief } from "@/features/quests/quest-brief";
 import { QuestTicketList } from "@/features/quests/quest-ticket-list";
 import { RewardDialog } from "@/features/quests/reward-dialog";
 import { ConsolePanel } from "@/features/sandbox/console-panel";
+import { EventLoopPanel, type LoopEvent } from "@/features/sandbox/event-loop-panel";
 import { PreviewToolbar } from "@/features/sandbox/preview-toolbar";
 import { SandboxFrame } from "@/features/sandbox/sandbox-frame";
 import type { PreviewViewport } from "@/features/sandbox/viewport";
 import { useCloudSync } from "@/features/sync/use-cloud-sync";
 import {
   type ConsoleEntry,
+  type LoopTimerEvent,
   type ObjectiveResult,
 } from "@/features/validation/types";
 import { Button } from "@/components/ui/button";
@@ -188,6 +190,9 @@ function QuestWorkspace({
   );
   const [xrayEnabled, setXrayEnabled] = useState(false);
   const [fullAudit, setFullAudit] = useState(false);
+  const [eventLoopEnabled, setEventLoopEnabled] = useState(false);
+  const [loopEvents, setLoopEvents] = useState<LoopEvent[]>([]);
+  const loopIdRef = useRef(0);
 
   const runModeRef = useRef<"auto" | "deploy">("auto");
   const autoRunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -195,6 +200,7 @@ function QuestWorkspace({
   const ownedItemIds = useGameStore((state) => state.ownedItemIds);
   const buffs = useMemo(() => computeBuffs(ownedItemIds), [ownedItemIds]);
   const completed = completedQuestIds.includes(quest.id);
+  const runTimeout = quest.validationTimeoutMs ?? RUN_TIMEOUT_MS;
 
   useEffect(() => {
     gameEvents.emit("quest:started", { questId: quest.id, title: quest.title });
@@ -208,6 +214,8 @@ function QuestWorkspace({
 
   const scheduleAutoRun = useCallback(() => {
     if (autoRunTimerRef.current) clearTimeout(autoRunTimerRef.current);
+    // Boss fight (audit bertimer) hanya divalidasi saat Deploy.
+    if (quest.isBoss) return;
     // Buff Mesin Espresso mempercepat siklus pratinjau otomatis.
     const fastPreview = computeBuffs(useGameStore.getState().ownedItemIds).fastPreview;
     autoRunTimerRef.current = setTimeout(() => {
@@ -216,7 +224,7 @@ function QuestWorkspace({
       setConsoleEntries([]);
       setRunToken((token) => token + 1);
     }, fastPreview ? 600 : AUTO_RUN_DELAY_MS);
-  }, []);
+  }, [quest.isBoss]);
 
   function handleEditorChange(nextValue: string) {
     const nextFiles = { ...files, [activeFile]: nextValue };
@@ -268,9 +276,29 @@ function QuestWorkspace({
     }
   }, [quest.id]);
 
+  const handleLoopTimer = useCallback((event: LoopTimerEvent) => {
+    loopIdRef.current += 1;
+    setLoopEvents((current) => [
+      ...current.slice(-19),
+      {
+        id: loopIdRef.current,
+        kind: event.type === "loop-timer-start" ? "start" : "fire",
+        label: event.label,
+        delay: event.delay,
+        at: Date.now(),
+      },
+    ]);
+  }, []);
+
   const handleValidationResult = useCallback(
     (incoming: ObjectiveResult[]) => {
-      setResults(incoming);
+      setResults((previous) => {
+        const merged = new Map((previous ?? []).map((result) => [result.id, result]));
+        for (const result of incoming) merged.set(result.id, result);
+        return quest.objectives
+          .filter((objective) => merged.has(objective.id))
+          .map((objective) => merged.get(objective.id) as ObjectiveResult);
+      });
 
       const allPassed = incoming.length > 0 && incoming.every((result) => result.passed);
       if (runModeRef.current !== "deploy") return;
@@ -305,7 +333,9 @@ function QuestWorkspace({
   );
 
   const allObjectivesPassed =
-    results !== null && results.length > 0 && results.every((result) => result.passed);
+    results !== null &&
+    results.length === quest.objectives.length &&
+    results.every((result) => result.passed);
 
   const fileNames = Object.keys(quest.starterFiles);
 
@@ -351,6 +381,11 @@ function QuestWorkspace({
               )}
             </div>
             <div className="flex items-center gap-2">
+              {quest.validationTimeoutMs !== undefined && (
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-mono text-[10px] text-amber-700">
+                  audit ±{Math.round(runTimeout / 1000)} dtk
+                </span>
+              )}
               <span className="hidden font-mono text-[10px] text-muted-foreground/90 xl:inline">
                 Ctrl/⌘ + Enter
               </span>
@@ -404,20 +439,26 @@ function QuestWorkspace({
                 onViewportChange={setViewport}
                 xray={xrayEnabled}
                 onXrayChange={setXrayEnabled}
+                eventLoop={eventLoopEnabled}
+                onEventLoopChange={setEventLoopEnabled}
+                showEventLoop={quest.phase >= 3}
               />
+              {eventLoopEnabled && <EventLoopPanel events={loopEvents} />}
               <div className="min-h-0 flex-1">
                 <SandboxFrame
                   files={files}
                   objectives={quest.objectives}
                   runToken={runToken}
-                  timeoutMs={RUN_TIMEOUT_MS}
+                  timeoutMs={runTimeout}
                   fullAudit={fullAudit}
                   viewport={viewport}
                   xrayEnabled={xrayEnabled}
+                  mocks={quest.mocks}
                   onConsole={handleConsole}
                   onRuntimeError={handleRuntimeError}
                   onValidationResult={handleValidationResult}
                   onTimeout={handleTimeout}
+                  onLoopTimer={handleLoopTimer}
                 />
               </div>
             </div>

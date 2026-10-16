@@ -48,7 +48,24 @@ export type Rule =
       mode?: "some" | "all";
       viewport?: number;
     }
-  | { kind: "allOf"; rules: Rule[]; viewport?: number };
+  | { kind: "allOf"; rules: Rule[]; viewport?: number }
+  | {
+      /**
+       * Ekspresi JavaScript yang dievaluasi setelah kode mahasiswa berjalan.
+       * Truthy = lulus. String = gagal dengan pesan tersebut.
+       * Error (mis. fungsi tidak ada) = gagal dengan pesan error.
+       */
+      kind: "js";
+      test: string;
+    }
+  /** Simulasi interaksi: klik elemen (lulus bila elemen ditemukan). */
+  | { kind: "click"; selector: string }
+  /** Simulasi isi input + dispatch event input. */
+  | { kind: "input"; selector: string; value: string }
+  /** Simulasi submit form (event cancelable agar preventDefault bekerja). */
+  | { kind: "submit"; selector: string }
+  /** Polling ekspresi JS hingga truthy atau habis waktu (untuk kode async). */
+  | { kind: "waitFor"; test: string; timeoutMs?: number };
 
 export const ruleSchema: z.ZodType<Rule> = z.lazy(() =>
   z.discriminatedUnion("kind", [
@@ -107,8 +124,39 @@ export const ruleSchema: z.ZodType<Rule> = z.lazy(() =>
       rules: z.array(ruleSchema).min(1),
       viewport: z.number().int().optional(),
     }),
+    z.object({
+      kind: z.literal("js"),
+      test: z.string().min(1),
+    }),
+    z.object({
+      kind: z.literal("click"),
+      selector: z.string().min(1),
+    }),
+    z.object({
+      kind: z.literal("input"),
+      selector: z.string().min(1),
+      value: z.string(),
+    }),
+    z.object({
+      kind: z.literal("submit"),
+      selector: z.string().min(1),
+    }),
+    z.object({
+      kind: z.literal("waitFor"),
+      test: z.string().min(1),
+      timeoutMs: z.number().int().min(100).max(20000).optional(),
+    }),
   ]),
 ) as z.ZodType<Rule>;
+
+export const mockApiSchema = z.object({
+  /** Substring URL yang dicocokkan (mock dengan kecocokan terpanjang menang). */
+  url: z.string().min(1),
+  json: z.unknown(),
+  status: z.number().int().optional(),
+  delayMs: z.number().int().min(0).max(5000).optional(),
+});
+export type MockApi = z.infer<typeof mockApiSchema>;
 
 export const objectiveSchema = z.object({
   id: z.string().min(1),
@@ -147,6 +195,10 @@ export const questSchema = z.object({
   visualNote: z.string().min(1),
   /** Menampilkan pemilih viewport Desktop/Tablet/Mobile di panel preview. */
   responsivePreview: z.boolean().default(false),
+  /** Endpoint API tiruan untuk misi async (fetch di dalam sandbox). */
+  mocks: z.array(mockApiSchema).optional(),
+  /** Batas waktu audit khusus misi (default 3 dtk; boss async bisa lebih lama). */
+  validationTimeoutMs: z.number().int().min(1000).max(30000).optional(),
 });
 
 export type Objective = z.infer<typeof objectiveSchema>;

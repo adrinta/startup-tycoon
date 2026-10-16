@@ -115,10 +115,10 @@ export function QuestTicketList({
 
         <div className="mt-2 rounded-md border border-dashed border-border/60 px-2.5 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Babak 3: Growth Hack
+            Babak 4: The Unicorn
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            High-Rise Tower & materi JavaScript — segera hadir.
+            Data Center Penthouse & materi PHP — segera hadir.
           </div>
         </div>
       </div>

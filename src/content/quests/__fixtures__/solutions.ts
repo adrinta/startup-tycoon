@@ -1,5 +1,6 @@
 import type { QuestFileMap } from "@/content/quests/schema";
 import { PHASE_2_QUESTS } from "@/content/quests/phase2";
+import { PHASE_3_QUESTS } from "@/content/quests/phase3";
 
 /**
  * Solusi kanonik untuk pengujian otomatis (hanya digunakan oleh test,
@@ -195,7 +196,8 @@ const PHASE_1_SOLUTIONS: Record<string, QuestFileMap> = {
 /* ------------------------------- Babak 2 (CSS) -------------------------------- */
 
 function starterOf(questId: string): QuestFileMap {
-  const quest = PHASE_2_QUESTS.find((candidate) => candidate.id === questId);
+  const all = [...PHASE_2_QUESTS, ...PHASE_3_QUESTS];
+  const quest = all.find((candidate) => candidate.id === questId);
   if (!quest) throw new Error(`Starter quest ${questId} tidak ditemukan`);
   return quest.starterFiles;
 }
@@ -307,9 +309,228 @@ const PHASE_2_SOLUTIONS: Record<string, QuestFileMap> = {
   "2.7": { ...starterOf("2.7"), "style.css": BOSS_CSS },
 };
 
+/* ------------------------------- Babak 3 (JS) --------------------------------- */
+
+const JS_31 = [
+  "const PAJAK = 0.11;",
+  "",
+  "function hitungTotal(harga, jumlah) {",
+  "  return harga * jumlah;",
+  "}",
+  "",
+  "function hitungLaba(total, biaya) {",
+  "  return total - biaya;",
+  "}",
+  "",
+  'function formatRupiah(nilai) {',
+  '  return "Rp " + nilai.toLocaleString("id-ID");',
+  "}",
+  "",
+].join("\n");
+
+const JS_32 = [
+  'function cekStok(stok, batas) {',
+  '  if (stok < batas) {',
+  '    return "Kritis";',
+  "  }",
+  '  return "Aman";',
+  "}",
+  "",
+  "function statusKuota(persen) {",
+  '  if (persen >= 90) return "kritis";',
+  '  if (persen >= 75) return "peringatan";',
+  '  return "normal";',
+  "}",
+  "",
+  "function hitungDenda(hari) {",
+  "  if (hari === 0) {",
+  "    return 0;",
+  "  }",
+  "  if (hari >= 1 && hari <= 3) {",
+  "    return hari * 1000;",
+  "  }",
+  "  return hari * 3000;",
+  "}",
+  "",
+].join("\n");
+
+const JS_33 = [
+  "function totalPelanggan(daftar) {",
+  "  return daftar.length;",
+  "}",
+  "",
+  "function daftarAktif(daftar) {",
+  "  return daftar",
+  "    .filter(function (p) {",
+  "      return p.aktif;",
+  "    })",
+  "    .map(function (p) {",
+  "      return p.nama;",
+  "    });",
+  "}",
+  "",
+  "function cariPelanggan(daftar, nama) {",
+  "  const ditemukan = daftar.find(function (p) {",
+  "    return p.nama === nama;",
+  "  });",
+  "  return ditemukan === undefined ? null : ditemukan;",
+  "}",
+  "",
+  "function ringkasan(daftar) {",
+  "  let aktif = 0;",
+  "  let nonaktif = 0;",
+  "  for (let i = 0; i < daftar.length; i += 1) {",
+  "    if (daftar[i].aktif) aktif += 1;",
+  "    else nonaktif += 1;",
+  "  }",
+  "  return { aktif: aktif, nonaktif: nonaktif };",
+  "}",
+  "",
+].join("\n");
+
+const JS_34 = [
+  'document.querySelector("#tombol-klik").addEventListener("click", function () {',
+  '  document.querySelector("#sapaan").textContent = "Halo, Founder!";',
+  "});",
+  "",
+  "let nomorTamu = 0;",
+  "",
+  'document.querySelector("#tambah-kehadiran").addEventListener("click", function () {',
+  "  nomorTamu += 1;",
+  '  const item = document.createElement("li");',
+  '  item.textContent = "Tamu " + nomorTamu;',
+  '  document.querySelector("#daftar-hadir").appendChild(item);',
+  "});",
+  "",
+].join("\n");
+
+const JS_35 = [
+  'document.querySelector("#form-daftar").addEventListener("submit", function (event) {',
+  "  event.preventDefault();",
+  '  const email = document.querySelector("#email").value.trim();',
+  '  const pesan = document.querySelector("#pesan");',
+  '  if (email === "") {',
+  '    pesan.textContent = "Email wajib diisi.";',
+  '  } else if (!email.includes("@") || !email.includes(".")) {',
+  '    pesan.textContent = "Format email tidak valid.";',
+  "  } else {",
+  '    pesan.textContent = "Pendaftaran berhasil! Cek inbox kamu.";',
+  "  }",
+  "});",
+  "",
+  "function bersihkanNama(teks) {",
+  "  return teks.trim().toLowerCase();",
+  "}",
+  "",
+  "function parseUang(teks) {",
+  "  try {",
+  "    const angka = Number(teks);",
+  '    if (Number.isNaN(angka)) throw new Error("bukan angka");',
+  "    return angka;",
+  "  } catch (error) {",
+  "    return null;",
+  "  }",
+  "}",
+  "",
+].join("\n");
+
+const JS_36 = [
+  'document.querySelector("#muat").addEventListener("click", function () {',
+  '  fetch("https://api.projectx.test/kurs")',
+  "    .then(function (res) {",
+  "      return res.json();",
+  "    })",
+  "    .then(function (data) {",
+  '      document.querySelector("#nilai-kurs").textContent =',
+  '        "1 USD = Rp " + data.usd.toLocaleString("id-ID");',
+  "    });",
+  "});",
+  "",
+  'document.querySelector("#muat-gagal").addEventListener("click", function () {',
+  '  fetch("https://api.projectx.test/kurs-gagal")',
+  "    .then(function (res) {",
+  "      if (!res.ok) {",
+  '        document.querySelector("#nilai-kurs").textContent =',
+  '          "Gagal memuat kurs. Coba lagi nanti.";',
+  "        return;",
+  "      }",
+  "      return res.json();",
+  "    });",
+  "});",
+  "",
+].join("\n");
+
+const JS_37 = [
+  "let skor = 0;",
+  "let waktu = 8;",
+  "let serangan = null;",
+  "let hitungMundur = null;",
+  "",
+  "function perbaruiSkor() {",
+  '  document.querySelector("#skor").textContent = skor;',
+  "}",
+  "",
+  "function selesai(pesan) {",
+  "  clearInterval(serangan);",
+  "  clearInterval(hitungMundur);",
+  '  document.querySelector("#status").textContent = pesan;',
+  "}",
+  "",
+  'document.querySelector("#mulai").addEventListener("click", function () {',
+  "  skor = 0;",
+  "  waktu = 8;",
+  "  perbaruiSkor();",
+  '  document.querySelector("#waktu").textContent = waktu;',
+  '  document.querySelector("#status").textContent = "Serangan dimulai! Pertahankan server!";',
+  "",
+  '  const sectors = document.querySelectorAll(".sector");',
+  "  for (let i = 0; i < sectors.length; i += 1) {",
+  '    sectors[i].classList.remove("bug");',
+  "  }",
+  "",
+  "  serangan = setInterval(function () {",
+  "    const acak = Math.floor(Math.random() * sectors.length);",
+  '    sectors[acak].classList.add("bug");',
+  "  }, 400);",
+  "",
+  "  hitungMundur = setInterval(function () {",
+  "    waktu -= 1;",
+  '    document.querySelector("#waktu").textContent = Math.max(waktu, 0);',
+  "    if (waktu <= 0) {",
+  '      selesai("Waktu habis — server jatuh!");',
+  "    }",
+  "  }, 1000);",
+  "",
+  "  for (let i = 0; i < sectors.length; i += 1) {",
+  "    sectors[i].addEventListener(\"click\", function () {",
+  '      if (sectors[i].classList.contains("bug")) {',
+  '        sectors[i].classList.remove("bug");',
+  "        skor += 1;",
+  "        perbaruiSkor();",
+  "        if (skor >= 3) {",
+  '          selesai("Menang! Serangan berhasil dipatahkan.");',
+  "        }",
+  "      }",
+  "    });",
+  "  }",
+  "});",
+  "",
+].join("\n");
+
+const PHASE_3_SOLUTIONS: Record<string, QuestFileMap> = {
+  "3.1": { ...starterOf("3.1"), "app.js": JS_31 },
+  "3.2": { ...starterOf("3.2"), "app.js": JS_32 },
+  "3.3": { ...starterOf("3.3"), "app.js": `${starterOf("3.3")["app.js"]?.split("// TODO")[0] ?? ""}${JS_33}` },
+  "3.4": { ...starterOf("3.4"), "app.js": JS_34 },
+  "3.5": { ...starterOf("3.5"), "app.js": JS_35 },
+  "3.6": { ...starterOf("3.6"), "app.js": JS_36 },
+  "3.7": { ...starterOf("3.7"), "app.js": JS_37 },
+};
+
 export const QUEST_SOLUTIONS: Record<string, QuestFileMap> = {
   ...PHASE_1_SOLUTIONS,
   ...PHASE_2_SOLUTIONS,
+  ...PHASE_3_SOLUTIONS,
 };
 
 /** Varian rusak untuk memastikan validator menangkap kesalahan. */
@@ -358,5 +579,13 @@ export const QUEST_BROKEN_SAMPLES: Record<
   "2.5": {
     files: { ...starterOf("2.5"), "style.css": R_24 },
     expectFailed: "feature-flex",
+  },
+  "3.1": {
+    files: starterOf("3.1"),
+    expectFailed: "hitung-total-ada",
+  },
+  "3.5": {
+    files: starterOf("3.5"),
+    expectFailed: "email-kosong",
   },
 };

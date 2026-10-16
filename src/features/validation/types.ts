@@ -56,11 +56,27 @@ export interface FrameValidationResultMessage {
   results: ObjectiveResult[];
 }
 
+export interface FrameLoopTimerMessage {
+  __st: true;
+  nonce: string;
+  type: "loop-timer-start" | "loop-timer-fire";
+  label: string;
+  delay?: number;
+}
+
 export type FrameMessage =
   | FrameReadyMessage
   | FrameConsoleMessage
   | FrameRuntimeErrorMessage
-  | FrameValidationResultMessage;
+  | FrameValidationResultMessage
+  | FrameLoopTimerMessage;
+
+/** Event instrumentasi setTimeout untuk visualizer Event Loop. */
+export interface LoopTimerEvent {
+  type: "loop-timer-start" | "loop-timer-fire";
+  label: string;
+  delay?: number;
+}
 
 export interface ValidateRequestMessage {
   type: "validate";
@@ -92,6 +108,9 @@ export function isFrameMessage(value: unknown): value is FrameMessage {
       return typeof message.message === "string";
     case "validation-result":
       return typeof message.requestId === "string" && Array.isArray(message.results);
+    case "loop-timer-start":
+    case "loop-timer-fire":
+      return typeof message.label === "string";
     default:
       return false;
   }
