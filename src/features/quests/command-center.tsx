@@ -2,12 +2,14 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Rocket, Trophy } from "lucide-react";
+import { Download, Rocket, Trophy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Quest, QuestFileMap } from "@/content/quests/schema";
 import { AuthButton } from "@/features/auth/auth-button";
 import { CodexPanel } from "@/features/codex/codex-panel";
 import { FileTabs } from "@/features/editor/file-tabs";
+import { EndingCinematic } from "@/features/export/ending-cinematic";
+import { ExportPortfolioDialog } from "@/features/export/export-portfolio-dialog";
 import { gameEvents } from "@/features/game/events";
 import { GamePanel } from "@/features/game/game-panel";
 import { StatsHud } from "@/features/game/stats-hud";
@@ -22,6 +24,7 @@ import { SandboxFrame } from "@/features/sandbox/sandbox-frame";
 import type { PreviewViewport } from "@/features/sandbox/viewport";
 import { PhpSandboxRunner } from "@/features/php/php-sandbox";
 import { useCloudSync } from "@/features/sync/use-cloud-sync";
+import { sendAttempt } from "@/features/sync/send-attempt";
 import {
   type ConsoleEntry,
   type LoopTimerEvent,
@@ -76,6 +79,8 @@ export function CommandCenter() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workspaceEpoch, setWorkspaceEpoch] = useState(0);
   const [reward, setReward] = useState<{ outcome: QuestOutcome; quest: Quest } | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [showEnding, setShowEnding] = useState(false);
 
   // Misi aktif = pilihan pemain, atau misi pertama yang bisa dimainkan.
   const effectiveId = selectedId ?? questRepository.firstPlayable(completedQuestIds);
@@ -117,6 +122,15 @@ export function CommandCenter() {
             }}
           />
           <span className="h-6 w-px bg-border" />
+          <button
+            type="button"
+            title="Ekspor Portofolio (.zip)"
+            aria-label="Ekspor Portofolio"
+            onClick={() => setExportOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Download className="h-4 w-4" />
+          </button>
           <Link
             href="/leaderboard"
             title="Papan Peringkat"
@@ -135,7 +149,13 @@ export function CommandCenter() {
         quests={quests}
         completedQuestIds={completedQuestIds}
         onSelectQuest={setSelectedId}
-        onReward={setReward}
+        onReward={({ outcome, quest: rewardedQuest }) => {
+          if (rewardedQuest.id === "4.7") {
+            setShowEnding(true);
+          } else {
+            setReward({ outcome, quest: rewardedQuest });
+          }
+        }}
       />
 
       <RewardDialog
@@ -149,6 +169,17 @@ export function CommandCenter() {
           setSelectedId(questId);
         }}
       />
+
+      <EndingCinematic
+        open={showEnding}
+        onOpenChange={setShowEnding}
+        onExport={() => {
+          setShowEnding(false);
+          setExportOpen(true);
+        }}
+      />
+
+      <ExportPortfolioDialog open={exportOpen} onOpenChange={setExportOpen} />
     </div>
   );
 }
@@ -307,6 +338,9 @@ function QuestWorkspace({
 
       const allPassed = incoming.length > 0 && incoming.every((result) => result.passed);
       if (runModeRef.current !== "deploy") return;
+
+      // Metrik dashboard pengajar (tanpa memblokir alur gim).
+      sendAttempt(quest.id, allPassed);
 
       if (allPassed) {
         const outcome = localProgressRepository.completeQuest({

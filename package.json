@@ -28,6 +28,8 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "dotenv": "^18.0.8",
+    "file-saver": "^2.0.5",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.57.0",
     "motion": "^14.2.0",
     "next": "16.4.1",
@@ -44,6 +46,7 @@
   "devDependencies": {
     "@php-wasm/node": "^3.1.58",
     "@tailwindcss/turbopack": "^4",
+    "@types/file-saver": "^2.0.7",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",

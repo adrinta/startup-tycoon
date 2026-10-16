@@ -4,9 +4,9 @@ Game edukasi pemodelan web **full-stack** (HTML, CSS, JavaScript, PHP) berbungku
 
 Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storyline.md`](./storyline.md) (blueprint cerita & silabus).
 
-## Status: Milestone 6 — Babak 4: The Unicorn (selesai)
+## Status: Milestone 7 — Finishing (selesai) 🏁
 
-> Seluruh **empat babak (28 misi + 4 boss fight)** dapat dimainkan: HTML (Garasi), CSS (Co-Working + Pitching Day), JavaScript (High-Rise + Cyber Attack Defense), dan PHP & Database via **PHP-WASM** (Penthouse + IPO). Aplikasi tetap berjalan sempurna dalam Mode Lokal tanpa konfigurasi cloud.
+> **Seluruh rencana selesai**: empat babak (28 misi + 4 boss fight), cloud (Google SSO, sinkronisasi, leaderboard), dashboard pengajar, ekspor portofolio, dan ending cinematic. Aplikasi tetap berjalan penuh dalam Mode Lokal tanpa konfigurasi cloud.
 
 ### Gameplay & Sandbox (M1)
 
@@ -64,6 +64,16 @@ Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storylin
 - **Alur client-server hidup** — form di preview dijembatani kembali ke mesin (submit → PHP dieksekusi → halaman dirender ulang) dan `fetch()` di dalam halaman diarahkan ke endpoint PHP yang sama, ditemani animasi chip **Client → Mesin PHP → Respons**.
 - **Evaluator ganda** — objektif `php` dinilai di sisi React terhadap output/exit-code/db/selector; objektif Babak 1–3 tetap di harness iframe. Mesin diuji penuh lewat test integrasi opt-in: `RUN_PHP_ENGINE_TESTS=1 pnpm test` (14 test: solusi kanonik lulus & starter gagal di mesin PHP nyata).
 - **Executive Penthouse** — panggung keempat: palet marmer-navy + rak server LED, pipa data mengalir, pintu brankas, patung unicorn emas, suar puncak, kubah perisai & rak gudang.
+
+### Dashboard Pengajar, Ekspor & Ending (M7)
+
+- **Ekspor Portofolio (.zip)** — tombol unduh di header Command Center: seluruh kode dari misi yang selesai dikemas (JSZip + FileSaver) menjadi satu folder per misi + `README.md` berisi statistik perusahaan, siap dipakai sebagai portofolio.
+- **Dashboard Pengajar** (`/dashboard`) — pengajar membuat kelas (dengan **kode gabung** 6 karakter), melihat **progres & akurasi** tiap mahasiswa, serta daftar **misi paling menantang (bottleneck)** dari metrik audit.
+  - Menjadi pengajar: tambahkan email ke `LECTURER_EMAILS` (lihat `.env.example`) — role tersinkron otomatis saat login.
+  - Mahasiswa bergabung lewat kolom "Kode Kelas" saat onboarding, atau panel "Gabung Kelas" di halaman dashboard.
+- **Metrik akurasi** — setiap tombol Deploy mencatat hasil audit (lulus/gagal) ke tabel `quest_attempts` secara fire-and-forget (hanya saat cloud aktif).
+- **Ending Cinematic** — setelah boss IPO (4.7) tuntas: adegan penutup animasi (lonceng bursa, unicorn emas), epilog cerita dari garasi ke unicorn, rekap statistik perjalanan, plus jalan pintas ke ekspor portofolio & papan peringkat.
+- **Skema database final** — tabel `classes`, `class_members`, dan `quest_attempts` melengkapi seluruh gap PRD (sebelumnya: kolom `buffs` di M3).
 
 ## Menjalankan
 
@@ -165,6 +175,14 @@ NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS="student.univ.ac.id,univ.ac.id"
 
 Email di luar domain terdaftar ditolak saat callback OAuth (termasuk subdomain, mis. `dosen@fisip.univ.ac.id`).
 
+### Opsional: mengaktifkan Dashboard Pengajar
+
+```env
+LECTURER_EMAILS="dosen@kampus.ac.id,dosen2@kampus.ac.id"
+```
+
+Email pada daftar ini otomatis berperan `lecturer`: saat login, role tersinkron dan halaman `/dashboard` terbuka — pengajar dapat membuat kelas (kode gabung 6 karakter) dan memantau progres, akurasi, serta bottleneck misi mahasiswa.
+
 ## Roadmap
 
 | Milestone | Isi |
@@ -175,7 +193,8 @@ Email di luar domain terdaftar ditolak saat callback OAuth (termasuk subdomain, 
 | ✅ M4 | Babak 2 CSS: X-Ray Box Model, Flexbox/Grid, boss Pitching Day (audit 3 viewport) |
 | ✅ M5 | Babak 3 JS: runner js/klik/input, Event Loop visualizer, mock fetch, boss Cyber Attack Defense |
 | ✅ M6 | Babak 4 PHP: mesin PHP-WASM + SQLite, sesi & hashing, boss IPO (audit skenario HTTP) |
-| M7 | Dashboard dosen, ekspor ZIP, polish performa & keamanan |
-| M7 | Dashboard dosen, ekspor ZIP, polish performa & keamanan |
+| ✅ M7 | Dashboard pengajar (kelas, akurasi, bottleneck), ekspor portofolio .zip, ending cinematic |
 
-Catatan gap PRD: kolom `buffs` pada `inventory_items` sudah diimplementasikan (M3). Sisa untuk M7 — tabel `classes`/`class_members` (dashboard dosen) dan `quest_attempts` (metrik akurasi kode).
+Seluruh gap PRD yang pernah tercatat kini terimplementasi: `buffs` pada `inventory_items` (M3), serta `classes`/`class_members` dan `quest_attempts` (M7).
+
+**Batasan yang diketahui:** kode PHP dengan perulangan tak berujung akan menyibukkan worker WebAssembly (ada batas lapor 20 detik + tombol coba lagi; jika macet, muat ulang halaman) — halaman `/leaderboard` dan `/dashboard` membutuhkan cloud; uji Lighthouse belum dijalankan otomatis di CI.

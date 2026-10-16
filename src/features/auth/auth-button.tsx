@@ -1,6 +1,6 @@
 "use client";
 
-import { LogIn, LogOut, Trophy, UserRound } from "lucide-react";
+import { LayoutDashboard, LogIn, LogOut, Trophy, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,11 @@ export function AuthButton({ size = "sm", variant = "outline", className }: Auth
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/dashboard" className="gap-2">
+            <LayoutDashboard className="h-3.5 w-3.5" /> Dashboard Kelas
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/leaderboard" className="gap-2">
             <Trophy className="h-3.5 w-3.5" /> Papan Peringkat

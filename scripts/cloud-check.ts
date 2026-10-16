@@ -23,15 +23,18 @@ async function main() {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
   try {
-    const [users, progress, items] = await Promise.all([
+    const [users, progress, items, classes, attempts] = await Promise.all([
       prisma.user.count(),
       prisma.userProgress.count(),
       prisma.inventoryItem.count(),
+      prisma.class.count(),
+      prisma.questAttempt.count(),
     ]);
     console.log("✓ Koneksi database OK (pooler)");
     console.log(
       `  users: ${users} · user_progress: ${progress} · inventory_items: ${items}`,
     );
+    console.log(`  classes: ${classes} · quest_attempts: ${attempts}`);
     if (items === 0) {
       console.log("  (opsional) jalankan `pnpm db:seed` untuk mengisi katalog dekorasi");
     }

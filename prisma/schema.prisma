@@ -26,6 +26,9 @@ model User {
 
   progress  UserProgress[]
   inventory UserInventory[]
+  lecturedClasses Class[] @relation("LecturerClasses")
+  classMemberships ClassMember[]
+  attempts QuestAttempt[]
 
   @@map("users")
 }
@@ -72,4 +75,45 @@ model UserInventory {
 
   @@unique([userId, itemId])
   @@map("user_inventory")
+}
+
+/// Kelas yang dibuat pengajar (M7: dashboard dosen).
+model Class {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  joinCode   String   @unique @map("join_code")
+  lecturerId String   @map("lecturer_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  lecturer User          @relation("LecturerClasses", fields: [lecturerId], references: [id], onDelete: Cascade)
+  members  ClassMember[]
+
+  @@map("classes")
+}
+
+/// Keanggotaan mahasiswa pada kelas.
+model ClassMember {
+  id       String   @id @default(uuid()) @db.Uuid
+  classId  String   @map("class_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, userId])
+  @@map("class_members")
+}
+
+/// Riwayat percobaan audit per misi (metrik akurasi & bottleneck).
+model QuestAttempt {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  questId   String   @map("quest_id")
+  passed    Boolean
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quest_attempts")
 }

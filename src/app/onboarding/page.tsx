@@ -88,6 +88,7 @@ function OnboardingForm({
   const router = useRouter();
   const [startupName, setStartupName] = useState(initialName);
   const [avatar, setAvatar] = useState(initialAvatar);
+  const [joinCode, setJoinCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,7 +100,11 @@ function OnboardingForm({
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startupName: startupName.trim(), founderAvatar: avatar }),
+        body: JSON.stringify({
+          startupName: startupName.trim(),
+          founderAvatar: avatar,
+          joinCode: joinCode.trim() === "" ? undefined : joinCode.trim(),
+        }),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { issues?: string[] } | null;
@@ -174,6 +179,23 @@ function OnboardingForm({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="join-code">Kode Kelas (opsional)</Label>
+            <Input
+              id="join-code"
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+              placeholder="mis. AB12CD"
+              maxLength={12}
+              autoComplete="off"
+              className="font-mono uppercase"
+            />
+            <p className="text-[10.5px] text-muted-foreground">
+              Minta kode ini dari dosenmu bila kelas memakai Startup Tycoon — progresmu akan
+              tampil di dashboard kelas.
+            </p>
           </div>
 
           {error && (

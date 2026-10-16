@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPrisma } from "@/lib/db/prisma";
+import { joinClassByCode } from "@/lib/services/classroom";
+import { isLecturerEmail } from "@/lib/services/classroom-logic";
 import { getAuthenticatedUser } from "@/lib/supabase/server";
 
 const profileSchema = z.object({
   startupName: z.string().trim().min(2, "Nama startup minimal 2 karakter").max(40),
   founderAvatar: z.string().min(1).max(12),
+  /** Opsional: kode kelas yang dibagikan dosen. */
+  joinCode: z.string().trim().max(12).optional(),
 });
 
 export async function GET() {
@@ -19,7 +23,7 @@ export async function GET() {
     return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
   }
 
-  const row = await prisma.user.upsert({
+  let row = await prisma.user.upsert({
     where: { id: user.id },
     create: {
       id: user.id,
@@ -29,6 +33,13 @@ export async function GET() {
     },
     update: {},
   });
+
+  if (isLecturerEmail(user.email) && row.role !== "lecturer") {
+    row = await prisma.user.update({
+      where: { id: user.id },
+      data: { role: "lecturer" },
+    });
+  }
 
   return NextResponse.json({
     email: row.email,
@@ -62,7 +73,7 @@ export async function PUT(request: Request) {
     );
   }
 
-  const row = await prisma.user.upsert({
+  let row = await prisma.user.upsert({
     where: { id: user.id },
     create: {
       id: user.id,
@@ -76,9 +87,26 @@ export async function PUT(request: Request) {
     },
   });
 
+  if (isLecturerEmail(user.email) && row.role !== "lecturer") {
+    row = await prisma.user.update({
+      where: { id: user.id },
+      data: { role: "lecturer" },
+    });
+  }
+
+  let joined = false;
+  let className: string | undefined;
+  if (parsed.data.joinCode && parsed.data.joinCode.length >= 4) {
+    const joinResult = await joinClassByCode(user.id, parsed.data.joinCode);
+    joined = joinResult.ok;
+    className = joinResult.className;
+  }
+
   return NextResponse.json({
     startupName: row.startupName,
     founderAvatar: row.founderAvatar,
     role: row.role,
+    joined,
+    className,
   });
 }
