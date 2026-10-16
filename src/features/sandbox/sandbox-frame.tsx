@@ -1,8 +1,16 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { buildSrcdoc, type FileMap } from "@/features/sandbox/build-srcdoc";
+import {
+  VIEWPORT_DIMENSIONS,
+  dimensionForWidth,
+  groupObjectivesByViewport,
+  mergeGroupResults,
+  viewportWidthOf,
+  type PreviewViewport,
+} from "@/features/sandbox/viewport";
 import {
   isFrameMessage,
   type ConsoleEntry,
@@ -15,6 +23,10 @@ export interface SandboxFrameProps {
   objectives: Objective[];
   /** Naikkan nilai ini untuk menjalankan ulang frame. */
   runToken: number;
+  /** true (Deploy) = audit semua viewport; false (auto-preview) = viewport aktif saja. */
+  fullAudit: boolean;
+  viewport: PreviewViewport;
+  xrayEnabled: boolean;
   onConsole?: (entry: ConsoleEntry) => void;
   onRuntimeError?: (message: string) => void;
   onValidationResult?: (results: ObjectiveResult[]) => void;
@@ -22,15 +34,31 @@ export interface SandboxFrameProps {
   timeoutMs?: number;
 }
 
-interface PendingRun {
-  nonce: string;
-  requestId: string;
+interface Layout {
+  width: number;
+  height: number;
+}
+
+function nextFrames(count: number): Promise<void> {
+  return new Promise((resolve) => {
+    const step = (remaining: number) => {
+      if (remaining <= 0) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(() => step(remaining - 1));
+    };
+    step(count);
+  });
 }
 
 export function SandboxFrame({
   files,
   objectives,
   runToken,
+  fullAudit,
+  viewport,
+  xrayEnabled,
   onConsole,
   onRuntimeError,
   onValidationResult,
@@ -39,55 +67,150 @@ export function SandboxFrame({
 }: SandboxFrameProps) {
   const [srcDoc, setSrcDoc] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [validationLayout, setValidationLayout] = useState<Layout | null>(null);
+  const [wrapperWidth, setWrapperWidth] = useState(0);
 
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const pendingRef = useRef<PendingRun | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef<{ nonce: string } | null>(null);
+  const resolversRef = useRef(new Map<string, (results: ObjectiveResult[]) => void>());
+  const epochRef = useRef(0);
+  const globalTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filesRef = useRef(files);
   const objectivesRef = useRef(objectives);
+  const fullAuditRef = useRef(fullAudit);
+  const viewportRef = useRef(viewport);
+  const xrayRef = useRef(xrayEnabled);
   const onConsoleRef = useRef(onConsole);
   const onRuntimeErrorRef = useRef(onRuntimeError);
   const onValidationResultRef = useRef(onValidationResult);
   const onTimeoutRef = useRef(onTimeout);
 
-  // Sinkronkan nilai terbaru ke ref agar listener dan timer selalu
-  // membaca data terkini tanpa perlu re-subscribe.
   useEffect(() => {
     filesRef.current = files;
     objectivesRef.current = objectives;
+    fullAuditRef.current = fullAudit;
+    viewportRef.current = viewport;
+    xrayRef.current = xrayEnabled;
     onConsoleRef.current = onConsole;
     onRuntimeErrorRef.current = onRuntimeError;
     onValidationResultRef.current = onValidationResult;
     onTimeoutRef.current = onTimeout;
   });
 
+  /* Ukur lebar wadah agar preview viewport tetap bisa di-zoom-out (fit). */
+  useEffect(() => {
+    const element = wrapperRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver((entries) => {
+      setWrapperWidth(entries[0]?.contentRect.width ?? 0);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const failRun = useCallback(() => {
+    epochRef.current += 1;
+    pendingRef.current = null;
+    resolversRef.current.clear();
+    setValidationLayout(null);
+    setSrcDoc(null);
+    setRunning(false);
+    onTimeoutRef.current?.();
+  }, []);
+
+  /* Jalankan ulang sandbox setiap runToken berubah. */
   useEffect(() => {
     if (runToken === 0) return;
 
     const nonce = crypto.randomUUID();
-    const requestId = crypto.randomUUID();
-    pendingRef.current = { nonce, requestId };
+    epochRef.current += 1;
+    const epoch = epochRef.current;
 
+    pendingRef.current = { nonce };
+    resolversRef.current.clear();
     setSrcDoc(buildSrcdoc(filesRef.current, nonce));
     setRunning(true);
 
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      // Hentikan frame yang menggantung (mis. infinite loop) dengan
-      // melepas iframe dari DOM sehingga konteksnya dimatikan.
-      pendingRef.current = null;
-      setSrcDoc(null);
-      setRunning(false);
-      onTimeoutRef.current?.();
-    }, timeoutMs);
+    if (globalTimeoutRef.current) clearTimeout(globalTimeoutRef.current);
+    globalTimeoutRef.current = setTimeout(() => {
+      if (epochRef.current !== epoch) return;
+      failRun();
+    }, timeoutMs + 5000);
 
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (globalTimeoutRef.current) clearTimeout(globalTimeoutRef.current);
     };
-  }, [runToken, timeoutMs]);
+  }, [runToken, timeoutMs, failRun]);
+
+  /* Teruskan status X-Ray ke frame (juga saat dokumen baru dimuat). */
+  useEffect(() => {
+    if (srcDoc === null) return;
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: "xray", enabled: xrayEnabled },
+      "*",
+    );
+  }, [xrayEnabled, srcDoc]);
 
   useEffect(() => {
+    function requestValidation(
+      frame: HTMLIFrameElement,
+      requestId: string,
+      targets: Objective[],
+    ): Promise<ObjectiveResult[] | null> {
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          resolversRef.current.delete(requestId);
+          resolve(null);
+        }, timeoutMs);
+        resolversRef.current.set(requestId, (results) => {
+          clearTimeout(timer);
+          resolve(results);
+        });
+        frame.contentWindow?.postMessage({ type: "validate", requestId, objectives: targets }, "*");
+      });
+    }
+
+    async function orchestrate(frame: HTMLIFrameElement, epoch: number): Promise<void> {
+      // Mulai dari layout dasar (layout override validasi sebelumnya dibersihkan).
+      setValidationLayout(null);
+      const allObjectives = objectivesRef.current;
+      let groups = groupObjectivesByViewport(allObjectives);
+
+      if (!fullAuditRef.current) {
+        const currentWidth = viewportWidthOf(viewportRef.current);
+        groups = groups.filter(
+          (group) => group.viewport === null || group.viewport === currentWidth,
+        );
+      }
+
+      const collected = new Map<string, ObjectiveResult>();
+
+      for (const group of groups) {
+        if (epochRef.current !== epoch) return;
+
+        if (group.viewport !== null) {
+          const dimension = dimensionForWidth(group.viewport);
+          setValidationLayout({ width: dimension.width, height: dimension.height });
+          await nextFrames(3);
+          if (epochRef.current !== epoch) return;
+        }
+
+        const results = await requestValidation(frame, crypto.randomUUID(), group.objectives);
+        if (epochRef.current !== epoch) return;
+        if (results === null) {
+          failRun();
+          return;
+        }
+        for (const result of results) collected.set(result.id, result);
+      }
+
+      setValidationLayout(null);
+      setRunning(false);
+      onValidationResultRef.current?.(mergeGroupResults(allObjectives, collected));
+    }
+
     function handleMessage(event: MessageEvent) {
       const frame = iframeRef.current;
       if (frame && event.source && event.source !== frame.contentWindow) return;
@@ -100,14 +223,13 @@ export function SandboxFrame({
 
       switch (data.type) {
         case "ready": {
+          if (globalTimeoutRef.current) clearTimeout(globalTimeoutRef.current);
           frame?.contentWindow?.postMessage(
-            {
-              type: "validate",
-              requestId: pending.requestId,
-              objectives: objectivesRef.current,
-            },
+            { type: "xray", enabled: xrayRef.current },
             "*",
           );
+          const epoch = epochRef.current;
+          if (frame) void orchestrate(frame, epoch);
           break;
         }
         case "console":
@@ -117,11 +239,10 @@ export function SandboxFrame({
           onRuntimeErrorRef.current?.(data.message);
           break;
         case "validation-result": {
-          if (data.requestId !== pending.requestId) return;
-          pendingRef.current = null;
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          setRunning(false);
-          onValidationResultRef.current?.(data.results);
+          const resolver = resolversRef.current.get(data.requestId);
+          if (!resolver) return;
+          resolversRef.current.delete(data.requestId);
+          resolver(data.results);
           break;
         }
       }
@@ -129,18 +250,61 @@ export function SandboxFrame({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [timeoutMs, failRun]);
+
+  const baseLayout: Layout | null =
+    viewport === "fit"
+      ? null
+      : { width: VIEWPORT_DIMENSIONS[viewport].width, height: VIEWPORT_DIMENSIONS[viewport].height };
+  const effectiveLayout = validationLayout ?? baseLayout;
+  const scale = effectiveLayout && wrapperWidth > 0 ? wrapperWidth / effectiveLayout.width : 1;
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-white">
+    <div
+      ref={wrapperRef}
+      className="scroll-slim relative h-full w-full overflow-auto bg-white"
+    >
       {srcDoc !== null ? (
-        <iframe
-          ref={iframeRef}
-          title="Preview hasil kode"
-          sandbox="allow-scripts allow-forms"
-          srcDoc={srcDoc}
-          className="h-full w-full border-0 bg-white"
-        />
+        <div
+          style={
+            effectiveLayout
+              ? {
+                  width: effectiveLayout.width * scale,
+                  height: effectiveLayout.height * scale,
+                  position: "relative",
+                }
+              : { position: "relative", width: "100%", height: "100%" }
+          }
+        >
+          <iframe
+            ref={iframeRef}
+            title="Preview hasil kode"
+            sandbox="allow-scripts allow-forms"
+            srcDoc={srcDoc}
+            style={
+              effectiveLayout
+                ? {
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: effectiveLayout.width,
+                    height: effectiveLayout.height,
+                    transform: `scale(${scale})`,
+                    transformOrigin: "top left",
+                    border: 0,
+                    background: "white",
+                  }
+                : {
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    border: 0,
+                    background: "white",
+                  }
+            }
+          />
+        </div>
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-3 bg-muted/40 p-8 text-center">
           <div className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
@@ -154,7 +318,7 @@ export function SandboxFrame({
       )}
 
       {running && (
-        <div className="pointer-events-none absolute inset-0 flex items-start justify-end bg-white/40 p-2">
+        <div className="pointer-events-none absolute inset-0 flex items-start justify-end bg-white/30 p-2">
           <span className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-white/95 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary shadow-sm">
             <Loader2 className="h-3 w-3 animate-spin" />
             Menjalankan…

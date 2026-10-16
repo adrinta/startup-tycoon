@@ -43,6 +43,8 @@ describe("progresi & pembukaan misi", () => {
   it("getNext mengembalikan misi berikutnya dan undefined di akhir babak", () => {
     expect(getNextQuest("1.1")?.id).toBe("1.2");
     expect(getNextQuest("1.6")?.id).toBe("1.7");
-    expect(getNextQuest("1.7")).toBeUndefined();
+    expect(getNextQuest("1.7")?.id).toBe("2.1");
+    expect(getNextQuest("2.6")?.id).toBe("2.7");
+    expect(getNextQuest("2.7")).toBeUndefined();
   });
 });

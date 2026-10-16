@@ -1,6 +1,7 @@
+import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import type { Objective } from "@/content/quests/schema";
-import { evaluateObjectives } from "@/features/sandbox/harness";
+import { createXrayRuntime, evaluateObjectives } from "@/features/sandbox/harness";
 
 function parseHtml(html: string): Document {
   return new DOMParser().parseFromString(html, "text/html");
@@ -130,5 +131,204 @@ describe("ketahanan evaluator", () => {
       ["a", true],
       ["b", false],
     ]);
+  });
+});
+
+/* ------------------------------ Aturan computed ------------------------------ */
+
+function evaluateWithStyle(
+  html: string,
+  style: string,
+  objective: Objective,
+): { passed: boolean; detail?: string } {
+  const dom = new JSDOM(`<!DOCTYPE html><html><head><style>${style}</style></head><body>${html}</body></html>`);
+  const [result] = evaluateObjectives(dom.window.document, [objective]);
+  return result;
+}
+
+describe("rule: computed", () => {
+  it("membaca nilai dari cascade stylesheet (padding)", () => {
+    const result = evaluateWithStyle(
+      '<div class="card">x</div>',
+      ".card { padding: 24px; }",
+      objective({ kind: "computed", selector: ".card", property: "padding-top", expected: "24px" }),
+    );
+    expect(result.passed).toBe(true);
+  });
+
+  it("menormalkan warna HEX <-> rgb", () => {
+    const viaHex = evaluateWithStyle(
+      '<span class="brand">x</span>',
+      ".brand { color: #6d28d9; }",
+      objective({ kind: "computed", selector: ".brand", property: "color", expected: "#6d28d9" }),
+    );
+    const viaRgb = evaluateWithStyle(
+      '<span class="brand">x</span>',
+      ".brand { color: #6d28d9; }",
+      objective({
+        kind: "computed",
+        selector: ".brand",
+        property: "color",
+        expected: "rgb(109, 40, 217)",
+      }),
+    );
+    expect(viaHex.passed).toBe(true);
+    expect(viaRgb.passed).toBe(true);
+  });
+
+  it("gagal dengan detail yang informatif saat warna berbeda", () => {
+    const result = evaluateWithStyle(
+      '<span class="brand">x</span>',
+      ".brand { color: #ff0000; }",
+      objective({ kind: "computed", selector: ".brand", property: "color", expected: "#6d28d9" }),
+    );
+    expect(result.passed).toBe(false);
+    expect(result.detail).toContain("color");
+  });
+
+  it("menghitung jumlah kolom grid dari repeat()", () => {
+    const result = evaluateWithStyle(
+      '<div class="grid"><i>1</i><i>2</i><i>3</i></div>',
+      ".grid { display: grid; grid-template-columns: repeat(3, 1fr); }",
+      objective({
+        kind: "computed",
+        selector: ".grid",
+        property: "grid-template-columns",
+        expectedCount: 3,
+      }),
+    );
+    expect(result.passed).toBe(true);
+  });
+
+  it("menghitung jumlah kolom dari daftar nilai eksplisit", () => {
+    const result = evaluateWithStyle(
+      '<div class="grid">x</div>',
+      ".grid { grid-template-columns: 1fr 1fr; }",
+      objective({
+        kind: "computed",
+        selector: ".grid",
+        property: "grid-template-columns",
+        expectedCount: 2,
+      }),
+    );
+    expect(result.passed).toBe(true);
+  });
+
+  it("menolak jumlah kolom yang salah dengan detail terdeteksi", () => {
+    const result = evaluateWithStyle(
+      '<div class="grid">x</div>',
+      ".grid { grid-template-columns: repeat(2, 1fr); }",
+      objective({
+        kind: "computed",
+        selector: ".grid",
+        property: "grid-template-columns",
+        expectedCount: 3,
+      }),
+    );
+    expect(result.passed).toBe(false);
+    expect(result.detail).toContain("terdeteksi 2");
+  });
+
+  it("mode all (default) menuntut semua elemen memenuhi", () => {
+    const html = '<div class="card">a</div><div class="card">b</div>';
+    const strict = evaluateWithStyle(
+      html,
+      ".card { padding: 24px; } .card:last-child { padding: 8px; }",
+      objective({ kind: "computed", selector: ".card", property: "padding-top", expected: "24px" }),
+    );
+    const lenient = evaluateWithStyle(
+      html,
+      ".card { padding: 24px; } .card:last-child { padding: 8px; }",
+      objective({
+        kind: "computed",
+        selector: ".card",
+        property: "padding-top",
+        expected: "24px",
+        mode: "some",
+      }),
+    );
+    expect(strict.passed).toBe(false);
+    expect(lenient.passed).toBe(true);
+  });
+
+  it("gagal ramah bila elemen tidak ditemukan", () => {
+    const result = evaluateWithStyle(
+      "<p>x</p>",
+      "",
+      objective({ kind: "computed", selector: ".tidak-ada", property: "display", expected: "flex" }),
+    );
+    expect(result.passed).toBe(false);
+    expect(result.detail).toContain(".tidak-ada");
+  });
+});
+
+describe("rule: allOf", () => {
+  it("lulus hanya bila seluruh sub-aturan lulus", () => {
+    const pass = evaluateWithStyle(
+      '<div class="row">x</div>',
+      ".row { display: flex; justify-content: space-between; }",
+      objective({
+        kind: "allOf",
+        rules: [
+          { kind: "computed", selector: ".row", property: "display", expected: "flex" },
+          {
+            kind: "computed",
+            selector: ".row",
+            property: "justify-content",
+            expected: "space-between",
+          },
+        ],
+      }),
+    );
+    expect(pass.passed).toBe(true);
+
+    const fail = evaluateWithStyle(
+      '<div class="row">x</div>',
+      ".row { display: flex; }",
+      objective({
+        kind: "allOf",
+        rules: [
+          { kind: "computed", selector: ".row", property: "display", expected: "flex" },
+          {
+            kind: "computed",
+            selector: ".row",
+            property: "justify-content",
+            expected: "space-between",
+          },
+        ],
+      }),
+    );
+    expect(fail.passed).toBe(false);
+    expect(fail.detail).toContain("justify-content");
+  });
+
+  it("mendukung aturan DOM di dalam allOf", () => {
+    const result = evaluateWithStyle(
+      "<header>a</header><main>b</main><footer>c</footer>",
+      "",
+      objective({
+        kind: "allOf",
+        rules: [
+          { kind: "dom", selector: "header" },
+          { kind: "dom", selector: "main" },
+          { kind: "dom", selector: "footer" },
+        ],
+      }),
+    );
+    expect(result.passed).toBe(true);
+  });
+});
+
+describe("runtime X-Ray", () => {
+  it("menambah dan membersihkan lapisan overlay", () => {
+    const dom = new JSDOM("<!DOCTYPE html><html><body><div style='padding: 12px'>x</div></body></html>");
+    const controller = createXrayRuntime(dom.window.document);
+
+    controller.setEnabled(true);
+    const overlay = dom.window.document.querySelector("[data-st-xray]");
+    expect(overlay).not.toBeNull();
+
+    controller.setEnabled(false);
+    expect(overlay?.childElementCount ?? 0).toBe(0);
   });
 });

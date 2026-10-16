@@ -5,7 +5,9 @@ import {
   GRID_COLS,
   GRID_ROWS,
   ROOM_PROPS,
+  propAppliesToStage,
   type PropDef,
+  type RoomStage,
 } from "./room-layout";
 
 export interface RoomState {
@@ -13,6 +15,7 @@ export interface RoomState {
   ownedItemIds: string[];
   activeQuestTitle: string | null;
   activeQuestHint: string | null;
+  stage: RoomStage;
 }
 
 /* ----------------------------- Geometri isometrik ----------------------------- */
@@ -130,8 +133,48 @@ const PALETTES = {
   espresso: { top: 0x475569, left: 0x334155, right: 0x26303f },
 } as const;
 
+const STAGE_PALETTES: Record<
+  RoomStage,
+  {
+    floorA: number;
+    floorB: number;
+    floorLine: number;
+    leftWall: number;
+    rightWall: number;
+    panelLine: number;
+    rim: number;
+  }
+> = {
+  garage: {
+    floorA: 0xffffff,
+    floorB: 0xeef3f9,
+    floorLine: 0xdfe7f0,
+    leftWall: 0xf1f5f9,
+    rightWall: 0xe8edf4,
+    panelLine: 0xd7dfe9,
+    rim: 0xcbd5e1,
+  },
+  coworking: {
+    floorA: 0xfdf7ef,
+    floorB: 0xf4e9db,
+    floorLine: 0xe8dac8,
+    leftWall: 0xfaf6f0,
+    rightWall: 0xf1e9df,
+    panelLine: 0xe4d7c6,
+    rim: 0xd8c8b2,
+  },
+};
+
 function depthFor(def: PropDef): number {
-  if (def.builder === "banner" || def.builder === "whiteboard") return -1;
+  if (
+    def.builder === "banner" ||
+    def.builder === "whiteboard" ||
+    def.builder === "neon-sign" ||
+    def.builder === "poster" ||
+    def.builder === "wall-clock"
+  ) {
+    return -1;
+  }
   if (def.builder === "rug") return 1;
   const base = 10 + (def.gx + def.gy) * 10;
   return def.builder === "trophy" ? base + 2 : base;
@@ -142,6 +185,8 @@ function depthFor(def: PropDef): number {
 export class GarageScene extends Phaser.Scene {
   private desired: RoomState;
   private ready = false;
+  private stage: RoomStage = "garage";
+  private baseLayers: Phaser.GameObjects.Graphics[] = [];
   private props = new Map<string, Phaser.GameObjects.Container>();
   private bugs: Phaser.GameObjects.Text[] = [];
   private ada?: Phaser.GameObjects.Container;
@@ -156,7 +201,8 @@ export class GarageScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.drawRoomBase();
+    this.stage = this.desired.stage;
+    this.paintBase(this.stage);
     this.createAda();
     this.ready = true;
     this.applyState(this.desired, false);
@@ -222,17 +268,35 @@ export class GarageScene extends Phaser.Scene {
     this.activeQuestTitle = state.activeQuestTitle;
     this.activeQuestHint = state.activeQuestHint;
 
+    if (state.stage !== this.stage) {
+      this.stage = state.stage;
+      this.paintBase(this.stage);
+    }
+
     const hooks = new Set(state.completedHooks);
     const items = new Set(state.ownedItemIds);
 
+    const desiredKeys = new Set<string>();
     for (const def of ROOM_PROPS) {
+      if (!propAppliesToStage(def, this.stage)) continue;
       const unlocked = def.hook
         ? hooks.has(def.hook)
         : def.itemId
           ? items.has(def.itemId)
           : false;
-      if (!unlocked || this.props.has(def.key)) continue;
+      if (unlocked) desiredKeys.add(def.key);
+    }
 
+    // Properti panggung lama dilepas (pindah lokasi kantor).
+    for (const [key, container] of Array.from(this.props.entries())) {
+      if (!desiredKeys.has(key)) {
+        container.destroy();
+        this.props.delete(key);
+      }
+    }
+
+    for (const def of ROOM_PROPS) {
+      if (!desiredKeys.has(def.key) || this.props.has(def.key)) continue;
       const container = this.buildProp(def);
       if (!container) continue;
       container.setDepth(depthFor(def));
@@ -268,7 +332,12 @@ export class GarageScene extends Phaser.Scene {
 
   /* ------------------------------ Ruangan dasar ----------------------------- */
 
-  private drawRoomBase(): void {
+  private paintBase(stage: RoomStage): void {
+    for (const layer of this.baseLayers) layer.destroy();
+    this.baseLayers = [];
+
+    const palette = STAGE_PALETTES[stage];
+
     const floor = this.add.graphics().setDepth(-3);
     for (let gx = 0; gx < GRID_COLS; gx += 1) {
       for (let gy = 0; gy < GRID_ROWS; gy += 1) {
@@ -276,9 +345,9 @@ export class GarageScene extends Phaser.Scene {
         const b: Pt = { x: isoX(gx + 1, gy), y: isoY(gx + 1, gy) };
         const c: Pt = { x: isoX(gx + 1, gy + 1), y: isoY(gx + 1, gy + 1) };
         const d: Pt = { x: isoX(gx, gy + 1), y: isoY(gx, gy + 1) };
-        floor.fillStyle((gx + gy) % 2 === 0 ? 0xffffff : 0xeef3f9, 1);
+        floor.fillStyle((gx + gy) % 2 === 0 ? palette.floorA : palette.floorB, 1);
         floor.fillPoints([a, b, c, d], true);
-        floor.lineStyle(1, 0xdfe7f0, 1);
+        floor.lineStyle(1, palette.floorLine, 1);
         floor.strokePoints([a, b, c, d], true);
       }
     }
@@ -292,7 +361,7 @@ export class GarageScene extends Phaser.Scene {
         wallPoint("left", GRID_ROWS, WALL_H),
         wallPoint("left", 0, WALL_H),
       ],
-      0xf1f5f9,
+      palette.leftWall,
     );
     fillQuad(
       walls,
@@ -302,11 +371,11 @@ export class GarageScene extends Phaser.Scene {
         wallPoint("right", GRID_COLS, WALL_H),
         wallPoint("right", 0, WALL_H),
       ],
-      0xe8edf4,
+      palette.rightWall,
     );
 
     // Garis panel dinding.
-    walls.lineStyle(1, 0xd7dfe9, 1);
+    walls.lineStyle(1, palette.panelLine, 1);
     for (let u = 1; u < GRID_ROWS; u += 1) {
       const p1 = wallPoint("left", u, 0);
       const p2 = wallPoint("left", u, WALL_H - 10);
@@ -318,14 +387,16 @@ export class GarageScene extends Phaser.Scene {
       walls.lineBetween(p1.x, p1.y, p2.x, p2.y);
     }
 
-    // Rim atas + alas dinding.
-    walls.lineStyle(2, 0xcbd5e1, 1);
+    // Rim atas dinding.
+    walls.lineStyle(2, palette.rim, 1);
     const leftRimA = wallPoint("left", 0, WALL_H);
     const leftRimB = wallPoint("left", GRID_ROWS, WALL_H);
     walls.lineBetween(leftRimA.x, leftRimA.y, leftRimB.x, leftRimB.y);
     const rightRimA = wallPoint("right", 0, WALL_H);
     const rightRimB = wallPoint("right", GRID_COLS, WALL_H);
     walls.lineBetween(rightRimA.x, rightRimA.y, rightRimB.x, rightRimB.y);
+
+    this.baseLayers.push(floor, walls);
   }
 
   /* --------------------------------- Properti -------------------------------- */
@@ -360,6 +431,18 @@ export class GarageScene extends Phaser.Scene {
         return this.buildCabinet(def.gx, def.gy);
       case "server-mini":
         return this.buildServer(def.gx, def.gy);
+      case "neon-sign":
+        return this.buildNeonSign(def.gx);
+      case "beanbag":
+        return this.buildBeanbag(def.gx, def.gy);
+      case "poster":
+        return this.buildPoster(def.gy);
+      case "wall-clock":
+        return this.buildWallClock(def.gx);
+      case "cargo-shelf":
+        return this.buildCargoShelf(def.gx, def.gy);
+      case "tablet-stand":
+        return this.buildTabletStand(def.gx, def.gy);
       default:
         return null;
     }
@@ -642,6 +725,181 @@ export class GarageScene extends Phaser.Scene {
       g.fillStyle(ledColors[i], 1);
       g.fillCircle(p.x, p.y, 1.8);
     }
+    c.add(g);
+    return c;
+  }
+
+  /* ----------------------------- Co-Working Space ---------------------------- */
+
+  private buildNeonSign(gx: number): Phaser.GameObjects.Container {
+    const c = this.add.container(0, 0);
+    const u1 = gx - 1.6;
+    const u2 = gx + 1.6;
+    const h1 = 36;
+    const h2 = 74;
+
+    const glow = this.add.graphics();
+    fillQuad(
+      glow,
+      [
+        wallPoint("right", u1 - 0.14, h1 - 6),
+        wallPoint("right", u2 + 0.14, h1 - 6),
+        wallPoint("right", u2 + 0.14, h2 + 6),
+        wallPoint("right", u1 - 0.14, h2 + 6),
+      ],
+      0x22d3ee,
+      0.22,
+    );
+
+    const g = this.add.graphics();
+    const quad = [
+      wallPoint("right", u1, h1),
+      wallPoint("right", u2, h1),
+      wallPoint("right", u2, h2),
+      wallPoint("right", u1, h2),
+    ];
+    fillQuad(g, quad, 0x0f172a);
+    g.lineStyle(2, 0x22d3ee, 0.9);
+    g.strokePoints(quad, true);
+
+    // Glyph "X" menyala.
+    const a = wallPoint("right", u1 + (u2 - u1) * 0.32, h1 + 8);
+    const b = wallPoint("right", u1 + (u2 - u1) * 0.68, h2 - 8);
+    const cc = wallPoint("right", u1 + (u2 - u1) * 0.32, h2 - 8);
+    const dd = wallPoint("right", u1 + (u2 - u1) * 0.68, h1 + 8);
+    g.lineStyle(5, 0x67e8f9, 0.95);
+    g.lineBetween(a.x, a.y, b.x, b.y);
+    g.lineBetween(cc.x, cc.y, dd.x, dd.y);
+
+    c.add([glow, g]);
+    this.tweens.add({ targets: glow, alpha: 0.5, duration: 1100, yoyo: true, repeat: -1 });
+    return c.setDepth(-1);
+  }
+
+  private buildBeanbag(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 3, 46, 16);
+    g.fillStyle(0x818cf8, 1);
+    g.fillEllipse(0, -8, 44, 28);
+    g.fillStyle(0x6366f1, 1);
+    g.fillEllipse(6, -4, 26, 16);
+    g.lineStyle(2, 0x4f46e5, 0.6);
+    g.strokeEllipse(0, -8, 44, 28);
+    c.add(g);
+    return c;
+  }
+
+  private buildPoster(gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(0, 0);
+    const g = this.add.graphics();
+    const u1 = gy - 1.1;
+    const u2 = gy + 1.1;
+    const h1 = 40;
+    const h2 = 78;
+
+    const quad = [
+      wallPoint("left", u1, h1),
+      wallPoint("left", u2, h1),
+      wallPoint("left", u2, h2),
+      wallPoint("left", u1, h2),
+    ];
+    fillQuad(g, quad, 0xfff7ed);
+    g.lineStyle(2, 0xd9c9b4, 1);
+    g.strokePoints(quad, true);
+
+    // "Teks" poster: judul tebal + paragraf tipis.
+    const line = (t: number, lift: number, width: number, color: number, alpha: number) => {
+      const from = u1 + (u2 - u1) * (t - width / 2);
+      const to = u1 + (u2 - u1) * (t + width / 2);
+      fillQuad(
+        g,
+        [
+          wallPoint("left", from, lift),
+          wallPoint("left", to, lift),
+          wallPoint("left", to, lift + 4),
+          wallPoint("left", from, lift + 4),
+        ],
+        color,
+        alpha,
+      );
+    };
+    line(0.5, h2 - 14, 0.62, 0x334155, 0.9);
+    line(0.5, h2 - 24, 0.72, 0x94a3b8, 0.9);
+    line(0.42, h2 - 31, 0.56, 0x94a3b8, 0.8);
+
+    const dot = wallPoint("left", u1 + (u2 - u1) * 0.82, h1 + 9);
+    g.fillStyle(0x0ea5e9, 1);
+    g.fillCircle(dot.x, dot.y, 4);
+
+    c.add(g);
+    return c.setDepth(-1);
+  }
+
+  private buildWallClock(gx: number): Phaser.GameObjects.Container {
+    const c = this.add.container(0, 0);
+    const g = this.add.graphics();
+    const center = wallPoint("right", gx, 60);
+
+    g.fillStyle(0xffffff, 1);
+    g.lineStyle(3, 0x475569, 1);
+    g.fillCircle(center.x, center.y, 13);
+    g.strokeCircle(center.x, center.y, 13);
+
+    for (let i = 0; i < 4; i += 1) {
+      const angle = (Math.PI / 2) * i;
+      const tx = center.x + Math.cos(angle) * 11;
+      const ty = center.y + Math.sin(angle) * 11;
+      g.fillStyle(0x94a3b8, 1);
+      g.fillCircle(tx, ty, 1.2);
+    }
+
+    g.lineStyle(2.5, 0x0f172a, 0.9);
+    g.lineBetween(center.x, center.y, center.x + 6, center.y + 5);
+    g.lineBetween(center.x, center.y, center.x - 1, center.y - 7);
+
+    c.add(g);
+    return c.setDepth(-1);
+  }
+
+  private buildCargoShelf(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 54, 17);
+    drawIsoBox(g, 0, 0, 0.85, 0.5, 0, 38, PALETTES.metal);
+
+    const box = isoBoxPoints(0, 0, 0.85, 0.5, 0, 38);
+    for (const lift of [13, 25]) {
+      const p1 = ptLerp(box.leftB, box.frontB, 0.08, lift);
+      const p2 = ptLerp(box.leftB, box.frontB, 0.92, lift);
+      g.lineStyle(1.5, 0x94a3b8, 0.9);
+      g.lineBetween(p1.x, p1.y, p2.x, p2.y);
+    }
+
+    // Baris kargo tersusun rapi (flex/grid in action).
+    drawIsoBox(g, -14, 0, 0.26, 0.34, 13, 10, PALETTES.amberBox);
+    drawIsoBox(g, 4, -1, 0.26, 0.34, 13, 10, PALETTES.cyanBox);
+    drawIsoBox(g, 16, 1, 0.26, 0.34, 13, 10, PALETTES.redBox);
+    drawIsoBox(g, -8, 0, 0.26, 0.34, 25, 10, PALETTES.cyanBox);
+    drawIsoBox(g, 10, 0, 0.26, 0.34, 25, 10, PALETTES.amberBox);
+    drawIsoBox(g, 0, 0, 0.3, 0.32, 0, 12, PALETTES.redBox);
+
+    c.add(g);
+    return c;
+  }
+
+  private buildTabletStand(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 34, 12);
+    drawIsoBox(g, 0, 0, 0.34, 0.28, 0, 8, PALETTES.server);
+    drawIsoBox(g, 0, 0, 0.62, 0.08, 8, 34, {
+      top: 0x0f172a,
+      left: 0x38bdf8,
+      right: 0x0b1220,
+    });
+    g.fillStyle(0xe0f2fe, 0.9);
+    g.fillCircle(10, -26, 1.6);
     c.add(g);
     return c;
   }

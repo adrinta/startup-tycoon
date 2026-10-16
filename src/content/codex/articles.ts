@@ -12,11 +12,7 @@ export interface CodexArticle {
   sections: CodexSection[];
 }
 
-/**
- * Holo-Codex Babak 1 — materi HTML bergaya ensiklopedia singkat
- * (ala W3Schools) dengan contoh kode interaktif.
- */
-export const CODEX_ARTICLES: CodexArticle[] = [
+const HTML_ARTICLES: CodexArticle[] = [
   {
     id: "html-basic",
     title: "Struktur Dasar Dokumen HTML",
@@ -247,6 +243,154 @@ export const CODEX_ARTICLES: CodexArticle[] = [
     ],
   },
 ];
+
+const CSS_ARTICLES: CodexArticle[] = [
+  {
+    id: "css-selectors",
+    title: "Selector, Warna & Latar belakang",
+    summary: "Memilih elemen CSS dengan tepat: element, class, dan id.",
+    tags: ["css", "dasar", "selector", "warna"],
+    sections: [
+      {
+        heading: "Anatomi aturan CSS",
+        body:
+          "Satu aturan CSS terdiri dari selector (target) dan declaration block (properti + nilai di dalam kurung kurawal). Setiap declaration diakhiri titik koma.",
+        code: "selector {\n  properti: nilai;\n}\n\n/* contoh */\np { color: #475569; }",
+      },
+      {
+        heading: "Element, class, dan id",
+        body:
+          "Selector element menarget semua tag tersebut (`p`, `h1`). Kelas dipakai berulang ditandai titik (`.brand`) dan bisa dipasang ke banyak elemen. Id unik ditandai pagar (`#hero`) dan hanya boleh satu di satu halaman. Kelas + id lebih spesifik daripada element.",
+        code: 'body { background-color: #f1f5f9; }\n\n.brand { color: #6d28d9; }\n\n#hero { background-color: #ede9fe; }',
+      },
+      {
+        heading: "Warna: HEX, RGB, dan nama",
+        body:
+          "Warna bisa ditulis `#rrggbb`, `rgb(red, green, blue)`, atau nama seperti `navy`. HEX `#6d28d9` berarti ungu tua. Untuk latar gunakan `background-color`, untuk teks gunakan `color`.",
+        code: ".badge {\n  background-color: #ede9fe; /* latar */\n  color: #6d28d9;            /* teks  */\n}",
+      },
+    ],
+  },
+  {
+    id: "css-boxmodel",
+    title: "Box Model & box-sizing",
+    summary: "Rahasia tata letak rapi: content, padding, border, dan margin.",
+    tags: ["css", "box model", "layout"],
+    sections: [
+      {
+        heading: "Empat lapis kotak",
+        body:
+          "Di CSS, setiap elemen adalah kotak berlapis: **content** (isi), **padding** (ruang dalam), **border** (garis tepi), dan **margin** (jarak ke elemen lain). Padding memberi napas ke dalam; margin memberi jarak ke luar.",
+        code: ".card {\n  padding: 24px;          /* ruang dalam */\n  border: 1px solid #cbd5e1; /* garis tepi */\n  margin-bottom: 16px;     /* jarak ke luar */\n}",
+      },
+      {
+        heading: "Shorthand: satu baris untuk empat sisi",
+        body:
+          "`padding: 24px;` berarti keempat sisi 24px. Dua nilai berarti atas-bawah dan kiri-kanan: `padding: 48px 32px;` → atas/bawah 48px, kiri/kanan 32px. Urutan penuh empat nilai: atas, kanan, bawah, kiri (searah jarum jam).",
+        code: "padding: 24px;          /* semua sisi */\npadding: 48px 32px;     /* atas-bawah | kiri-kanan */\npadding: 8px 16px 8px 16px; /* atas kanan bawah kiri */",
+      },
+      {
+        heading: "box-sizing: border-box",
+        body:
+          "Secara default lebar elemen dihitung dari content saja, sehingga padding/border menambah ukuran total. `box-sizing: border-box` membuat padding & border ikut dihitung di dalam lebar — ukuran elemen jadi stabil dan prediktabel.",
+        code: ".card {\n  box-sizing: border-box;\n}",
+      },
+    ],
+  },
+  {
+    id: "css-typography",
+    title: "Font, Teks & Display",
+    summary: "Tipografi modern: import font, ukuran, hingga menyembunyikan elemen.",
+    tags: ["css", "font", "tipografi"],
+    sections: [
+      {
+        heading: "Mengimpor font (Google Fonts)",
+        body:
+          "@import harus berada di baris paling atas file CSS. Setelah diimpor, pasang `font-family` dengan nama fontnya, sertakan cadangan (fallback) setelah koma.",
+        code: '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap");\n\nbody {\n  font-family: "Inter", sans-serif;\n}',
+      },
+      {
+        heading: "Ukuran dan gaya teks",
+        body:
+          "`font-size` mengatur besar teks (px atau rem; 1rem = 16px). `font-weight` mengatur ketebalan. `text-transform: uppercase` mengubah tampilan jadi HURUF BESAR tanpa mengubah isi aslinya.",
+        code: "h1 { font-size: 40px; font-weight: 800; }\n.badge { text-transform: uppercase; }",
+      },
+      {
+        heading: "display: block, inline-block, none",
+        body:
+          "`block` selalu mulai di baris baru dan memenuhi lebar. `inline-block` tersusun sejajar tapi bisa diberi padding/ukuran. `none` menghilangkan elemen dari tata letak (tidak memakan ruang) — beda dengan `visibility: hidden` yang tetap menyisakan ruang.",
+        code: ".badge { display: inline-block; }\n.draft-note { display: none; }",
+      },
+    ],
+  },
+  {
+    id: "css-position",
+    title: "Position, Sticky & z-index",
+    summary: "Mengunci elemen persis di tempat yang kamu inginkan.",
+    tags: ["css", "position", "layout"],
+    sections: [
+      {
+        heading: "Lima nilai position",
+        body:
+          "`static` = aliran normal (default). `relative` = digeser dari posisi normalnya, dan menjadi acuan anak `absolute`. `absolute` = menempel pada induk terdekat yang ber-position. `fixed` = menempel pada jendela browser (tidak ikut digulir). `sticky` = aliran normal, tapi mengunci saat mencapai ambang (mis. `top: 0`).",
+        code: ".site-header {\n  position: sticky;\n  top: 0;\n}\n\n.card { position: relative; }\n.card .badge { position: absolute; top: 8px; right: 8px; }\n.help-bubble { position: fixed; bottom: 16px; right: 16px; }",
+      },
+      {
+        heading: "z-index: siapa di atas?",
+        body:
+          "Elemen ber-position bisa saling menumpuk. `z-index` lebih besar berarti lebih dekat ke mata. z-index hanya bekerja pada elemen non-static.",
+        code: ".card .badge {\n  position: absolute;\n  z-index: 2; /* di atas konten kartu */\n}",
+      },
+    ],
+  },
+  {
+    id: "css-flex-grid",
+    title: "Flexbox & CSS Grid",
+    summary: "Dua mesin tata letak modern: sebaris fleksibel dan grid kolom.",
+    tags: ["css", "flexbox", "grid", "layout"],
+    sections: [
+      {
+        heading: "Flexbox untuk baris",
+        body:
+          "`display: flex` mengubah anak-anak elemen menjadi item fleksibel dalam satu baris. `justify-content` mengatur sebaran horizontal, `align-items` perataan vertikal, dan `gap` jarak antar item.",
+        code: ".feature-row {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 16px;\n}",
+      },
+      {
+        heading: "CSS Grid untuk kolom presisi",
+        body:
+          "`display: grid` bekerja dengan mendefinisikan kolom. `repeat(3, 1fr)` berarti tiga kolom sama rata (1fr = satu bagian bebas). `gap: 16px` memberi jarak antar kolom dan baris sekaligus.",
+        code: ".product-grid {\n  display: grid;\n  grid-template-columns: repeat(3, 1fr);\n  gap: 16px;\n}",
+      },
+    ],
+  },
+  {
+    id: "css-responsive",
+    title: "Media Queries & Transitions",
+    summary: "Satu halaman untuk semua layar — plus efek halus saat interaksi.",
+    tags: ["css", "responsive", "media query", "animasi"],
+    sections: [
+      {
+        heading: "Media query: aturan bersyarat",
+        body:
+          "`@media (max-width: 768px)` membungkus aturan yang hanya aktif saat lebar viewport ≤ 768px. Tulis aturan desktop terlebih dahulu, lalu penyesuaian mobile di dalam media query (mobile-last).",
+        code: ".feature-row { display: flex; }\n\n@media (max-width: 768px) {\n  .feature-row { flex-direction: column; }\n  h1 { font-size: 32px; }\n}",
+      },
+      {
+        heading: "Menumpuk di mobile",
+        body:
+          "Trik responsive paling sering: flex-direction dari `row` menjadi `column`, dan grid dari `repeat(3, 1fr)` menjadi `1fr`. Gunakan tombol viewport Mobile di panel preview untuk memeriksa hasilnya.",
+      },
+      {
+        heading: "Transitions untuk interaksi halus",
+        body:
+          "`transition` membuat perubahan properti (mis. warna saat hover) berjalan mulus, bukan melompat. `transition: transform 0.3s ease;` berarti durasi 0,3 detik dengan kurva ease.",
+        code: ".product-card {\n  transition: transform 0.3s ease;\n}\n\n.product-card:hover {\n  transform: translateY(-4px);\n}",
+      },
+    ],
+  },
+];
+
+export const CODEX_ARTICLES: CodexArticle[] = [...HTML_ARTICLES, ...CSS_ARTICLES];
 
 export function getCodexArticle(id: string): CodexArticle | undefined {
   return CODEX_ARTICLES.find((article) => article.id === id);

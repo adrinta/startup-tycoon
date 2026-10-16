@@ -1,20 +1,33 @@
+import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import { QUESTS, getQuestById } from "@/content/quests";
-import { questSchema } from "@/content/quests/schema";
+import { questSchema, type QuestFileMap } from "@/content/quests/schema";
 import {
   QUEST_BROKEN_SAMPLES,
   QUEST_SOLUTIONS,
 } from "@/content/quests/__fixtures__/solutions";
+import { buildSrcdoc } from "@/features/sandbox/build-srcdoc";
 import { evaluateObjectives } from "@/features/sandbox/harness";
+import { objectiveViewport } from "@/features/sandbox/viewport";
+import type { Objective } from "@/content/quests/schema";
 
-function parseHtml(html: string): Document {
-  return new DOMParser().parseFromString(html, "text/html");
+/**
+ * Dokumen uji dibangun lewat `buildSrcdoc` yang sama dengan aplikasi
+ * (style.css disuntikkan ke <style>), lalu dieksekusi di JSDOM sehingga
+ * aturan `computed` benar-benar mengukur cascade stylesheet.
+ */
+function buildTestDocument(files: QuestFileMap): Document {
+  return new JSDOM(buildSrcdoc(files, "test-nonce")).window.document;
 }
 
-function failedObjectiveIds(questId: string, code: string): string[] {
+function nonViewportObjectives(questId: string): Objective[] {
   const quest = getQuestById(questId);
   if (!quest) throw new Error(`Quest ${questId} tidak ditemukan`);
-  return evaluateObjectives(parseHtml(code), quest.objectives)
+  return quest.objectives.filter((objective) => objectiveViewport(objective) === null);
+}
+
+function failedIds(questId: string, files: QuestFileMap, objectives: Objective[]): string[] {
+  return evaluateObjectives(buildTestDocument(files), objectives)
     .filter((result) => !result.passed)
     .map((result) => result.id);
 }
@@ -49,12 +62,26 @@ describe("integritas katalog quest", () => {
       expect(QUEST_SOLUTIONS[quest.id], `solusi quest ${quest.id} belum dibuat`).toBeTruthy();
     }
   });
+
+  it("objective ber-viewport hanya muncul di quest responsive", () => {
+    for (const quest of QUESTS) {
+      const hasViewport = quest.objectives.some(
+        (objective) => objectiveViewport(objective) !== null,
+      );
+      if (hasViewport) {
+        expect(quest.responsivePreview, `quest ${quest.id} butuh responsivePreview`).toBe(true);
+        const css = QUEST_SOLUTIONS[quest.id]?.["style.css"] ?? "";
+        expect(css, `solusi ${quest.id} harus memuat @media`).toMatch(/@media/);
+      }
+    }
+  });
 });
 
-describe("solusi kanonik lulus semua objective", () => {
+describe("solusi kanonik lulus semua objective non-viewport", () => {
   for (const quest of QUESTS) {
     it(`quest ${quest.id} — ${quest.title}`, () => {
-      const failed = failedObjectiveIds(quest.id, QUEST_SOLUTIONS[quest.id]);
+      const objectives = nonViewportObjectives(quest.id);
+      const failed = failedIds(quest.id, QUEST_SOLUTIONS[quest.id], objectives);
       expect(failed, `objective yang gagal: ${failed.join(", ")}`).toEqual([]);
     });
   }
@@ -63,11 +90,14 @@ describe("solusi kanonik lulus semua objective", () => {
 describe("starter code masih menantang (belum lulus)", () => {
   for (const quest of QUESTS) {
     it(`quest ${quest.id} starter belum menyelesaikan misi`, () => {
-      const starter = quest.starterFiles["index.html"] ?? "";
-      const results = evaluateObjectives(parseHtml(starter), quest.objectives);
+      const objectives = nonViewportObjectives(quest.id);
+      const results = evaluateObjectives(
+        buildTestDocument(quest.starterFiles),
+        objectives,
+      );
       expect(
         results.some((result) => !result.passed),
-        `starter quest ${quest.id} sudah lulus semua objective`,
+        `starter quest ${quest.id} sudah lulus semua objective yang teruji`,
       ).toBe(true);
     });
   }
@@ -76,7 +106,10 @@ describe("starter code masih menantang (belum lulus)", () => {
 describe("varian kode rusak harus terdeteksi", () => {
   for (const [questId, sample] of Object.entries(QUEST_BROKEN_SAMPLES)) {
     it(`quest ${questId} gagal pada objective "${sample.expectFailed}"`, () => {
-      expect(failedObjectiveIds(questId, sample.code)).toContain(sample.expectFailed);
+      const quest = getQuestById(questId);
+      if (!quest) throw new Error(`Quest ${questId} tidak ditemukan`);
+      const failed = failedIds(questId, sample.files, quest.objectives);
+      expect(failed).toContain(sample.expectFailed);
     });
   }
 });

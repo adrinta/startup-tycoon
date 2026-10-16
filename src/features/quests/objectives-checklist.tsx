@@ -2,6 +2,7 @@
 
 import { CheckCircle2, Circle, Lightbulb, Loader2, XCircle } from "lucide-react";
 import type { Objective } from "@/content/quests/schema";
+import { objectiveViewport } from "@/features/sandbox/viewport";
 import type { ObjectiveResult } from "@/features/validation/types";
 import { cn } from "@/lib/utils";
 
@@ -84,6 +85,7 @@ export function ObjectivesChecklist({
         {objectives.map((objective) => {
           const result = resultById.get(objective.id);
           const state = result === undefined ? "pending" : result.passed ? "passed" : "failed";
+          const viewport = objectiveViewport(objective);
           return (
             <li
               key={objective.id}
@@ -104,8 +106,15 @@ export function ObjectivesChecklist({
                 {state === "failed" && (
                   <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600" />
                 )}
-                <div className="min-w-0">
-                  <div className="text-[12px] leading-snug">{objective.label}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12px] leading-snug">
+                    {objective.label}
+                    {viewport !== null && (
+                      <span className="ml-1.5 inline-block rounded bg-muted px-1 py-px align-middle font-mono text-[9px] text-muted-foreground">
+                        @ {viewport}px
+                      </span>
+                    )}
+                  </div>
                   {state === "failed" && result?.detail && (
                     <div className="mt-0.5 font-mono text-[10.5px] leading-snug text-red-600">
                       {result.detail}

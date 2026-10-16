@@ -24,6 +24,8 @@ const GameCanvas = dynamic(
 export interface GamePanelProps {
   activeQuestTitle: string | null;
   activeQuestHint: string | null;
+  activeQuestPhase: number;
+  location: string;
 }
 
 interface FeedEntry {
@@ -34,7 +36,12 @@ interface FeedEntry {
 
 let feedSequence = 0;
 
-export function GamePanel({ activeQuestTitle, activeQuestHint }: GamePanelProps) {
+export function GamePanel({
+  activeQuestTitle,
+  activeQuestHint,
+  activeQuestPhase,
+  location,
+}: GamePanelProps) {
   const completedQuestIds = useGameStore((state) => state.completedQuestIds);
   const ownedItemIds = useGameStore((state) => state.ownedItemIds);
 
@@ -63,8 +70,9 @@ export function GamePanel({ activeQuestTitle, activeQuestHint }: GamePanelProps)
       ownedItemIds,
       activeQuestTitle,
       activeQuestHint,
+      stage: activeQuestPhase >= 2 ? "coworking" : "garage",
     }),
-    [completedHooks, ownedItemIds, activeQuestTitle, activeQuestHint],
+    [completedHooks, ownedItemIds, activeQuestTitle, activeQuestHint, activeQuestPhase],
   );
 
   useEffect(() => {
@@ -104,7 +112,7 @@ export function GamePanel({ activeQuestTitle, activeQuestHint }: GamePanelProps)
         <div className="flex items-center gap-2">
           <MapPin className="h-3.5 w-3.5 text-primary" />
           <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-            Garasi Berdebu
+            {location}
           </span>
         </div>
         <div className="flex items-center gap-1.5">

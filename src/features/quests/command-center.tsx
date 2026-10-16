@@ -16,7 +16,9 @@ import { QuestBrief } from "@/features/quests/quest-brief";
 import { QuestTicketList } from "@/features/quests/quest-ticket-list";
 import { RewardDialog } from "@/features/quests/reward-dialog";
 import { ConsolePanel } from "@/features/sandbox/console-panel";
+import { PreviewToolbar } from "@/features/sandbox/preview-toolbar";
 import { SandboxFrame } from "@/features/sandbox/sandbox-frame";
+import type { PreviewViewport } from "@/features/sandbox/viewport";
 import { useCloudSync } from "@/features/sync/use-cloud-sync";
 import {
   type ConsoleEntry,
@@ -181,6 +183,11 @@ function QuestWorkspace({
   const [results, setResults] = useState<ObjectiveResult[] | null>(null);
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
   const [rightTab, setRightTab] = useState<"preview" | "console" | "codex">("preview");
+  const [viewport, setViewport] = useState<PreviewViewport>(
+    quest.responsivePreview ? "desktop" : "fit",
+  );
+  const [xrayEnabled, setXrayEnabled] = useState(false);
+  const [fullAudit, setFullAudit] = useState(false);
 
   const runModeRef = useRef<"auto" | "deploy">("auto");
   const autoRunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -205,6 +212,7 @@ function QuestWorkspace({
     const fastPreview = computeBuffs(useGameStore.getState().ownedItemIds).fastPreview;
     autoRunTimerRef.current = setTimeout(() => {
       runModeRef.current = "auto";
+      setFullAudit(false);
       setConsoleEntries([]);
       setRunToken((token) => token + 1);
     }, fastPreview ? 600 : AUTO_RUN_DELAY_MS);
@@ -220,6 +228,7 @@ function QuestWorkspace({
   const handleDeploy = useCallback(() => {
     if (autoRunTimerRef.current) clearTimeout(autoRunTimerRef.current);
     runModeRef.current = "deploy";
+    setFullAudit(true);
     setConsoleEntries([]);
     setStatus("running");
     setRunToken((token) => token + 1);
@@ -303,7 +312,12 @@ function QuestWorkspace({
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(430px,1fr)_minmax(400px,44%)]">
       <aside className="flex min-h-0 flex-col border-r border-border/60">
-        <GamePanel activeQuestTitle={quest.title} activeQuestHint={quest.hint ?? null} />
+        <GamePanel
+          activeQuestTitle={quest.title}
+          activeQuestHint={quest.hint ?? null}
+          activeQuestPhase={quest.phase}
+          location={quest.location}
+        />
         <QuestTicketList
           quests={quests}
           selectedId={quest.id}
@@ -384,16 +398,29 @@ function QuestWorkspace({
           </div>
 
           <TabsContent value="preview" className="min-h-0 flex-1 overflow-hidden">
-            <SandboxFrame
-              files={files}
-              objectives={quest.objectives}
-              runToken={runToken}
-              timeoutMs={RUN_TIMEOUT_MS}
-              onConsole={handleConsole}
-              onRuntimeError={handleRuntimeError}
-              onValidationResult={handleValidationResult}
-              onTimeout={handleTimeout}
-            />
+            <div className="flex h-full min-h-0 flex-col">
+              <PreviewToolbar
+                viewport={viewport}
+                onViewportChange={setViewport}
+                xray={xrayEnabled}
+                onXrayChange={setXrayEnabled}
+              />
+              <div className="min-h-0 flex-1">
+                <SandboxFrame
+                  files={files}
+                  objectives={quest.objectives}
+                  runToken={runToken}
+                  timeoutMs={RUN_TIMEOUT_MS}
+                  fullAudit={fullAudit}
+                  viewport={viewport}
+                  xrayEnabled={xrayEnabled}
+                  onConsole={handleConsole}
+                  onRuntimeError={handleRuntimeError}
+                  onValidationResult={handleValidationResult}
+                  onTimeout={handleTimeout}
+                />
+              </div>
+            </div>
           </TabsContent>
           <TabsContent value="console" className="min-h-0 flex-1 overflow-hidden">
             <ConsolePanel entries={consoleEntries} />

@@ -4,9 +4,9 @@ Game edukasi pemodelan web **full-stack** (HTML, CSS, JavaScript, PHP) berbungku
 
 Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storyline.md`](./storyline.md) (blueprint cerita & silabus).
 
-## Status: Milestone 3 — Cloud: Auth Google SSO, Sinkronisasi & Leaderboard (selesai)
+## Status: Milestone 4 — Babak 2: Seed Funding (selesai)
 
-> Aplikasi berjalan sempurna tanpa konfigurasi cloud (**Mode Lokal**). Fitur M3 aktif otomatis begitu environment Supabase diisi — panduan di bagian [Setup Cloud](#setup-cloud-supabase--google-sso).
+> Tiga babak dapat dimainkan: Babak 1 (HTML, Garasi), Babak 2 (CSS, Co-Working Space) — termasuk boss *Pitching Day* dengan audit 3 viewport. Aplikasi tetap berjalan sempurna dalam Mode Lokal tanpa konfigurasi cloud.
 
 ### Gameplay & Sandbox (M1)
 
@@ -36,6 +36,16 @@ Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storylin
 - **Prisma ORM 7 + driver adapter `pg`** — singleton lazy (`getPrisma()`), transaksi untuk tulis snapshot, katalog item di-upsert otomatis saat sync.
 - **Degradasi anggun** — tanpa env cloud: tombol Masuk menampilkan penjelasan Mode Lokal, API menjawab 503 `unconfigured`, halaman lain tetap berfungsi penuh.
 
+### Babak 2 & Alat Belajar CSS (M4)
+
+- **7 misi CSS** — 2.1 Identity Rebranding (selector & warna), 2.2 Ergonomi Ruangan (box model), 2.3 Tipografi Modern (font & display), 2.4 Penataan Antarmuka (position & z-index), 2.5 Pabrik Produk (Flexbox & Grid), 2.6 Pitch Deck Mobile (media query & transition), dan boss **2.7 Pitching Day** (12 objektif lintas 3 viewport). Editor kini multi-file: `index.html` + `style.css`.
+- **Validasi computed style sungguhan** — aturan baru `computed` (nilai akhir setelah cascade: warna, padding, position, dst.) dan `allOf` (gabungan beberapa syarat); dijalankan di dalam sandbox yang sama. Warna dinormalisasi HEX↔rgb, kolom Grid dihitung dari `repeat(N, 1fr)`.
+- **Audit per-viewport** — objective bisa ditandai `@ 1280px` / `@ 390px`; tombol **Deploy** menjalankan audit di ketiga ukuran (iframe di-resize bergantian), sementara pratinjau otomatis hanya memeriksa viewport aktif. Chip `@ Npx` tampil di checklist.
+- **X-Ray Box Model** — tombol di toolbar preview menyuntikkan overlay margin (oranye), border (kuning), padding (hijau), dan content (biru) ke setiap elemen ber-box, lengkap dengan legenda; ikut ter-refresh saat halaman diubah.
+- **Pemilih viewport** — Fit / Desktop 1280 / Tablet 768 / Mobile 390 dengan zoom-to-fit otomatis di panel sempit.
+- **Co-Working Space** — ruangan Phaser berpindah panggung saat memasuki Babak 2: palet dinding/lantai hangat + 7 properti baru (papan neon, beanbag, poster, jam dinding, rak kargo, tablet demo, trofi pitching) yang muncul per misi. Barang toko ikut pindah lokasi.
+- **Tiket per babak** — daftar misi dikelompokkan per babak dengan teaser Babak 3 (JavaScript).
+
 ## Menjalankan
 
 ```bash
@@ -48,7 +58,7 @@ pnpm dev          # http://localhost:3000
 | `pnpm dev` | Dev server (Turbopack) |
 | `pnpm build` | Build produksi + typecheck |
 | `pnpm start` | Jalankan hasil build |
-| `pnpm test` | 80 test: integritas quest, evaluator, sandbox end-to-end, ekonomi/buff, merge sync, domain email |
+| `pnpm test` | 117 test: integritas quest, evaluator (dom/gaya/computed), viewport, sandbox end-to-end, ekonomi/buff, sync, domain email |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint (termasuk aturan React Compiler) |
 | `pnpm db:push` | Dorong schema Prisma ke database (butuh `DATABASE_URL`/`DIRECT_URL`) |
@@ -143,7 +153,7 @@ Email di luar domain terdaftar ditolak saat callback OAuth (termasuk subdomain, 
 | ✅ M0–M1 | Bootstrap + vertical slice Babak 1 (HTML) |
 | ✅ M2 | Phaser.js scene isometrik garasi, toko & buff pasif, NPC, bug swarm |
 | ✅ M3 | Supabase Auth (Google SSO), onboarding, sinkronisasi progres, leaderboard |
-| M4 | Babak 2 CSS: X-Ray Box Model, Flexbox/Grid visualizer, boss Pitching Day |
+| ✅ M4 | Babak 2 CSS: X-Ray Box Model, Flexbox/Grid, boss Pitching Day (audit 3 viewport) |
 | M5 | Babak 3 JS: Event Loop visualizer, boss Cyber Attack Defense |
 | M6 | Babak 4 PHP-WASM + virtual SQLite, boss IPO |
 | M7 | Dashboard dosen, ekspor ZIP, polish performa & keamanan |

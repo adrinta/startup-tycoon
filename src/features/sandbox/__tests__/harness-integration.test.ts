@@ -51,7 +51,7 @@ describe("pipeline sandbox end-to-end (jsdom)", () => {
     expect(quest).toBeTruthy();
     if (!quest) return;
 
-    const srcdoc = buildSrcdoc({ "index.html": QUEST_SOLUTIONS["1.1"] }, "nonce-e2e");
+    const srcdoc = buildSrcdoc(QUEST_SOLUTIONS["1.1"], "nonce-e2e");
     const results = await runSandboxValidation(srcdoc, quest.objectives);
 
     const failed = results.filter((result) => !result.passed);
@@ -80,7 +80,7 @@ describe("pipeline sandbox end-to-end (jsdom)", () => {
 
     const srcdoc = buildSrcdoc(
       {
-        "index.html": QUEST_SOLUTIONS["1.1"],
+        ...QUEST_SOLUTIONS["1.1"],
         "app.js": "throw new Error('boom dari kode mahasiswa');",
       },
       "nonce-e2e3",
