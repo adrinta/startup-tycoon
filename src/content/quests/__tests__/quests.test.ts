@@ -6,10 +6,15 @@ import {
   QUEST_BROKEN_SAMPLES,
   QUEST_SOLUTIONS,
 } from "@/content/quests/__fixtures__/solutions";
+import { PHP_QUEST_SOLUTIONS } from "@/content/quests/__fixtures__/php-solutions";
 import { buildSrcdoc } from "@/features/sandbox/build-srcdoc";
 import { evaluateObjectives } from "@/features/sandbox/harness";
 import { objectiveViewport } from "@/features/sandbox/viewport";
 import type { Objective } from "@/content/quests/schema";
+
+/** Quest yang diuji lewat sandbox iframe (Babak 1–3). Babak 4 punya jalur PHP. */
+const CORE_QUESTS = QUESTS.filter((quest) => quest.phase !== 4);
+const PHP_QUESTS = QUESTS.filter((quest) => quest.phase === 4);
 
 /**
  * Dokumen uji dibangun lewat `buildSrcdoc` yang sama dengan aplikasi
@@ -65,12 +70,16 @@ describe("integritas katalog quest", () => {
 
   it("setiap quest punya solusi kanonik untuk pengujian", () => {
     for (const quest of QUESTS) {
-      expect(QUEST_SOLUTIONS[quest.id], `solusi quest ${quest.id} belum dibuat`).toBeTruthy();
+      if (quest.phase === 4) {
+        expect(PHP_QUEST_SOLUTIONS[quest.id], `solusi PHP quest ${quest.id} belum dibuat`).toBeTruthy();
+      } else {
+        expect(QUEST_SOLUTIONS[quest.id], `solusi quest ${quest.id} belum dibuat`).toBeTruthy();
+      }
     }
   });
 
   it("objective ber-viewport hanya muncul di quest responsive", () => {
-    for (const quest of QUESTS) {
+    for (const quest of CORE_QUESTS) {
       const hasViewport = quest.objectives.some(
         (objective) => objectiveViewport(objective) !== null,
       );
@@ -83,8 +92,40 @@ describe("integritas katalog quest", () => {
   });
 });
 
+describe("struktur babak 4 (PHP)", () => {
+  it("semua quest fase 4 punya skenario PHP dan objektif php saja", () => {
+    expect(PHP_QUESTS.length).toBeGreaterThan(0);
+    for (const quest of PHP_QUESTS) {
+      expect(quest.phpScenarios?.length ?? 0, `quest ${quest.id} tanpa skenario`).toBeGreaterThan(0);
+      for (const objective of quest.objectives) {
+        expect(objective.rule.kind, `quest ${quest.id} objektif ${objective.id}`).toBe("php");
+      }
+    }
+  });
+
+  it("setiap aturan php merujuk skenario yang benar-benar ada", () => {
+    for (const quest of PHP_QUESTS) {
+      const scenarioIds = new Set((quest.phpScenarios ?? []).map((scenario) => scenario.id));
+      for (const objective of quest.objectives) {
+        if (objective.rule.kind === "php") {
+          expect(
+            scenarioIds.has(objective.rule.scenario),
+            `quest ${quest.id} objektif ${objective.id} → skenario "${objective.rule.scenario}" tidak ada`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("starter babak 4 selalu berisi index.php", () => {
+    for (const quest of PHP_QUESTS) {
+      expect(quest.starterFiles["index.php"], `starter ${quest.id}`).toBeTruthy();
+    }
+  });
+});
+
 describe("solusi kanonik lulus semua objective non-viewport", () => {
-  for (const quest of QUESTS) {
+  for (const quest of CORE_QUESTS) {
     it(
       `quest ${quest.id} — ${quest.title}`,
       async () => {
@@ -98,7 +139,7 @@ describe("solusi kanonik lulus semua objective non-viewport", () => {
 });
 
 describe("starter code masih menantang (belum lulus)", () => {
-  for (const quest of QUESTS) {
+  for (const quest of CORE_QUESTS) {
     it(
       `quest ${quest.id} starter belum menyelesaikan misi`,
       async () => {

@@ -4,9 +4,9 @@ Game edukasi pemodelan web **full-stack** (HTML, CSS, JavaScript, PHP) berbungku
 
 Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storyline.md`](./storyline.md) (blueprint cerita & silabus).
 
-## Status: Milestone 5 — Babak 3: Growth Hack (selesai)
+## Status: Milestone 6 — Babak 4: The Unicorn (selesai)
 
-> Tiga dari empat babak dapat dimainkan: HTML (Garasi), CSS (Co-Working Space, + boss Pitching Day), dan JavaScript (High-Rise Tower, + boss Cyber Attack Defense). Aplikasi tetap berjalan sempurna dalam Mode Lokal tanpa konfigurasi cloud.
+> Seluruh **empat babak (28 misi + 4 boss fight)** dapat dimainkan: HTML (Garasi), CSS (Co-Working + Pitching Day), JavaScript (High-Rise + Cyber Attack Defense), dan PHP & Database via **PHP-WASM** (Penthouse + IPO). Aplikasi tetap berjalan sempurna dalam Mode Lokal tanpa konfigurasi cloud.
 
 ### Gameplay & Sandbox (M1)
 
@@ -56,6 +56,15 @@ Dokumen acuan: [`Startup Tycoon.md`](./Startup%20Tycoon.md) (PRD) dan [`storylin
 - **High-Rise Tower Lantai 15** — panggung ruangan ketiga (palet biru kaca) dengan 7 properti baru: dasbor pendapatan, lampu alarm, ban berjalan, papan kehadiran, robot penjaga, antena parabola, dan kubah perisai boss.
 - **Perlindungan lintas-transpiler** — sumber evaluator & X-Ray dibungkus shim helper (`__name` dll.) sehingga tetap mandiri di dev, test, maupun hasil minifikasi produksi.
 
+### Babak 4 & Mesin PHP-WASM (M6)
+
+- **7 misi PHP** — 4.1 Inisialisasi Server (syntax, array, loop), 4.2 Pengolahan Transaksi ($_GET/$_POST, htmlspecialchars), 4.3 Brankas Sesi (session, password_hash), 4.4 Gudang Data (PDO & SQLite: CRUD), 4.5 Perisai SQL Injection (prepared statements — serangan `admin' OR '1'='1` sungguhan!), 4.6 Integrasi Full-Stack (API JSON + fetch), dan boss **4.7 IPO** (registrasi ber-hash + login session + API, 6 objektif).
+- **PHP 8.3 di browser via WebAssembly** (`@php-wasm` 3.1 di Web Worker): runtime dimuat *lazy* saat misi PHP pertama dibuka (±25 MB, dengan progress); hanya satu build wasm yang ikut bundle berkat alias Turbopack (versi 8.0–8.5 lainnya dialihkan ke 8.3) + stub loader untuk aset jalur intl.
+- **Semantik HTTP sungguhan** — skenario quest dijalankan lewat `PHPRequestHandler` (GET/POST, cookie jar, `$_SERVER`), termasuk **reset database + seed SQL per skenario** dan inspeksi isi SQLite via query tersembunyi untuk memverifikasi data benar-benar tersimpan (termasuk hash 60-karakter, bukan sandi mentah).
+- **Alur client-server hidup** — form di preview dijembatani kembali ke mesin (submit → PHP dieksekusi → halaman dirender ulang) dan `fetch()` di dalam halaman diarahkan ke endpoint PHP yang sama, ditemani animasi chip **Client → Mesin PHP → Respons**.
+- **Evaluator ganda** — objektif `php` dinilai di sisi React terhadap output/exit-code/db/selector; objektif Babak 1–3 tetap di harness iframe. Mesin diuji penuh lewat test integrasi opt-in: `RUN_PHP_ENGINE_TESTS=1 pnpm test` (14 test: solusi kanonik lulus & starter gagal di mesin PHP nyata).
+- **Executive Penthouse** — panggung keempat: palet marmer-navy + rak server LED, pipa data mengalir, pintu brankas, patung unicorn emas, suar puncak, kubah perisai & rak gudang.
+
 ## Menjalankan
 
 ```bash
@@ -68,7 +77,7 @@ pnpm dev          # http://localhost:3000
 | `pnpm dev` | Dev server (Turbopack) |
 | `pnpm build` | Build produksi + typecheck |
 | `pnpm start` | Jalankan hasil build |
-| `pnpm test` | 145 test: integritas quest, evaluator (dom/gaya/js/interaksi/waitFor), viewport, sandbox end-to-end, ekonomi, sync, domain |
+| `pnpm test` | 165 test + 14 test integrasi mesin PHP (opt-in: `RUN_PHP_ENGINE_TESTS=1 pnpm test`) |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint (termasuk aturan React Compiler) |
 | `pnpm db:push` | Dorong schema Prisma ke database (butuh `DATABASE_URL`/`DIRECT_URL`) |
@@ -165,7 +174,8 @@ Email di luar domain terdaftar ditolak saat callback OAuth (termasuk subdomain, 
 | ✅ M3 | Supabase Auth (Google SSO), onboarding, sinkronisasi progres, leaderboard |
 | ✅ M4 | Babak 2 CSS: X-Ray Box Model, Flexbox/Grid, boss Pitching Day (audit 3 viewport) |
 | ✅ M5 | Babak 3 JS: runner js/klik/input, Event Loop visualizer, mock fetch, boss Cyber Attack Defense |
-| M6 | Babak 4 PHP-WASM + virtual SQLite, boss IPO |
+| ✅ M6 | Babak 4 PHP: mesin PHP-WASM + SQLite, sesi & hashing, boss IPO (audit skenario HTTP) |
+| M7 | Dashboard dosen, ekspor ZIP, polish performa & keamanan |
 | M7 | Dashboard dosen, ekspor ZIP, polish performa & keamanan |
 
 Catatan gap PRD: kolom `buffs` pada `inventory_items` sudah diimplementasikan (M3). Sisa untuk M7 — tabel `classes`/`class_members` (dashboard dosen) dan `quest_attempts` (metrik akurasi kode).

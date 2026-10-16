@@ -47,6 +47,8 @@ describe("progresi & pembukaan misi", () => {
     expect(getNextQuest("2.6")?.id).toBe("2.7");
     expect(getNextQuest("2.7")?.id).toBe("3.1");
     expect(getNextQuest("3.6")?.id).toBe("3.7");
-    expect(getNextQuest("3.7")).toBeUndefined();
+    expect(getNextQuest("3.7")?.id).toBe("4.1");
+    expect(getNextQuest("4.6")?.id).toBe("4.7");
+    expect(getNextQuest("4.7")).toBeUndefined();
   });
 });

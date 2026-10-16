@@ -65,7 +65,22 @@ export type Rule =
   /** Simulasi submit form (event cancelable agar preventDefault bekerja). */
   | { kind: "submit"; selector: string }
   /** Polling ekspresi JS hingga truthy atau habis waktu (untuk kode async). */
-  | { kind: "waitFor"; test: string; timeoutMs?: number };
+  | { kind: "waitFor"; test: string; timeoutMs?: number }
+  /**
+   * Pemeriksaan hasil eksekusi PHP-WASM pada satu skenario request
+   * (dievaluasi di sisi React, bukan di harness iframe).
+   */
+  | {
+      kind: "php";
+      scenario: string;
+      expectOutputContains?: string[];
+      expectOutputNotContains?: string[];
+      expectSelector?: string;
+      expectNoSelector?: string;
+      expectDbContains?: string[];
+      expectNoPhpErrors?: boolean;
+      expectExitCode?: number;
+    };
 
 export const ruleSchema: z.ZodType<Rule> = z.lazy(() =>
   z.discriminatedUnion("kind", [
@@ -146,8 +161,35 @@ export const ruleSchema: z.ZodType<Rule> = z.lazy(() =>
       test: z.string().min(1),
       timeoutMs: z.number().int().min(100).max(20000).optional(),
     }),
+    z.object({
+      kind: z.literal("php"),
+      scenario: z.string().min(1),
+      expectOutputContains: z.array(z.string()).optional(),
+      expectOutputNotContains: z.array(z.string()).optional(),
+      expectSelector: z.string().optional(),
+      expectNoSelector: z.string().optional(),
+      expectDbContains: z.array(z.string()).optional(),
+      expectNoPhpErrors: z.boolean().optional(),
+      expectExitCode: z.number().int().optional(),
+    }),
   ]),
 ) as z.ZodType<Rule>;
+
+export const phpScenarioSchema = z.object({
+  id: z.string().min(1),
+  method: z.enum(["GET", "POST"]).default("GET"),
+  /** URL relatif di dalam documentRoot (default: index.php). */
+  url: z.string().optional(),
+  get: z.record(z.string(), z.string()).optional(),
+  post: z.record(z.string(), z.string()).optional(),
+  /** Reset database + session sebelum skenario (handler cookie baru). */
+  reset: z.boolean().optional(),
+  /** SQL seed yang dijalankan setelah reset (multi-statement, SQLite). */
+  seedSql: z.string().optional(),
+  /** Query inspeksi setelah request; hasil JSON-nya dicek expectDbContains. */
+  dbQuery: z.string().optional(),
+});
+export type PhpScenario = z.infer<typeof phpScenarioSchema>;
 
 export const mockApiSchema = z.object({
   /** Substring URL yang dicocokkan (mock dengan kecocokan terpanjang menang). */
@@ -197,6 +239,8 @@ export const questSchema = z.object({
   responsivePreview: z.boolean().default(false),
   /** Endpoint API tiruan untuk misi async (fetch di dalam sandbox). */
   mocks: z.array(mockApiSchema).optional(),
+  /** Skenario request PHP (Babak 4) yang dijalankan saat audit. */
+  phpScenarios: z.array(phpScenarioSchema).optional(),
   /** Batas waktu audit khusus misi (default 3 dtk; boss async bisa lebih lama). */
   validationTimeoutMs: z.number().int().min(1000).max(30000).optional(),
 });

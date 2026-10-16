@@ -547,7 +547,152 @@ const JS_ARTICLES: CodexArticle[] = [
   },
 ];
 
-export const CODEX_ARTICLES: CodexArticle[] = [...HTML_ARTICLES, ...CSS_ARTICLES, ...JS_ARTICLES];
+const PHP_ARTICLES: CodexArticle[] = [
+  {
+    id: "php-dasar",
+    title: "Sintaks PHP, Variabel & Array",
+    summary: "Dasar skrip server: echo, variabel, array, dan loop.",
+    tags: ["php", "dasar", "array"],
+    sections: [
+      {
+        heading: "Blok <?php ... ?>",
+        body:
+          "Kode PHP berjalan di server (di gim ini: mesin WebAssembly) dan boleh bercampur dengan HTML. Semua perintah ditulis di dalam blok `<?php ... ?>` dan diakhiri titik koma.",
+        code: "<?php\necho \"<h1>Project X</h1>\";\n?>",
+      },
+      {
+        heading: "Variabel & array",
+        body:
+          "Variabel PHP diawali tanda `$` (mis. `$produk`). Array berisi banyak nilai: `$produk = [\"Katalog\", \"Pembukuan\"];`. Hitung isinya dengan `count($produk)`.",
+        code: '$produk = ["Katalog", "Pembukuan", "Pengiriman"];\necho count($produk); // 3',
+      },
+      {
+        heading: "Loop foreach",
+        body:
+          "`foreach` menyusuri array satu per satu. Di dalam string berkutip ganda, variabel otomatis diganti nilainya — praktis untuk merender HTML dinamis.",
+        code: '<?php foreach ($produk as $item): ?>\n  <li><?php echo $item; ?></li>\n<?php endforeach; ?>',
+      },
+    ],
+  },
+  {
+    id: "php-form",
+    title: "Formulir & Superglobals ($_GET / $_POST)",
+    summary: "Menangkap data dari browser dan membersihkannya.",
+    tags: ["php", "form", "post", "get"],
+    sections: [
+      {
+        heading: "$_GET dan $_POST",
+        body:
+          "PHP menyediakan array superglobal berisi data request: `$_GET` untuk query string (`?nama=Budi`) dan `$_POST` untuk data form yang dikirim method post. Cek metode dengan `$_SERVER['REQUEST_METHOD']`.",
+        code: 'if ($_SERVER["REQUEST_METHOD"] === "POST") {\n  $nama = $_POST["nama"] ?? "";\n  echo "Halo, " . $nama;\n}',
+      },
+      {
+        heading: "Membersihkan output: htmlspecialchars",
+        body:
+          "Input pengguna adalah data TIDAK TEPERCAYA. Sebelum ditampilkan, ubah karakter berbahaya menjadi entitas HTML agar tag seperti `<b>` tampil sebagai teks, bukan dieksekusi browser.",
+        code: '$aman = htmlspecialchars($_POST["nama"] ?? "");\necho $aman; // <b>Budi</b> tampil sebagai teks',
+      },
+      {
+        heading: "Form yang benar",
+        body:
+          'Formulir HTML dengan `method="post"` mengirim isi input (yang punya atribut `name`) ke URL pada atribut `action`. Halaman yang sama bisa menangani tampilan (GET) dan pemrosesan (POST).',
+      },
+    ],
+  },
+  {
+    id: "php-session",
+    title: "Session, Cookie & Password Hashing",
+    summary: "Mengingat pengguna yang sudah login dengan aman.",
+    tags: ["php", "session", "keamanan"],
+    sections: [
+      {
+        heading: "session_start & $_SESSION",
+        body:
+          "Session membuat server \"mengingat\" pengguna antar-request. Panggil `session_start()` di awal skrip, lalu simpan penanda di `$_SESSION`. Request berikutnya (cookie sesi otomatis ikut) membaca nilai yang sama.",
+        code: '<?php\nsession_start();\n$_SESSION["login"] = true;\n\nif (!empty($_SESSION["login"])) {\n  echo "Halo, Founder";\n}',
+      },
+      {
+        heading: "Password tidak boleh mentah",
+        body:
+          "Simpanlah hash, bukan password asli. `password_hash` mengubahnya menjadi hash satu-arah; `password_verify` memeriksa kecocokan tanpa pernah bisa membalik hash.",
+        code: '$hash = password_hash($sandi, PASSWORD_DEFAULT);\nif (password_verify($sandi, $hash)) {\n  echo "Login berhasil";\n}',
+      },
+    ],
+  },
+  {
+    id: "php-pdo",
+    title: "Database dengan PDO (SQLite)",
+    summary: "Menyimpan & membaca data permanen dari database.",
+    tags: ["php", "database", "pdo", "sqlite"],
+    sections: [
+      {
+        heading: "Koneksi",
+        body:
+          'PDO menyatukan cara mengakses berbagai database. Untuk SQLite: `new PDO("sqlite:/tmp/app.sqlite")`. Aktifkan mode error agar kesalahan query terlihat jelas.',
+        code: '$pdo = new PDO("sqlite:/tmp/app.sqlite");\n$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);',
+      },
+      {
+        heading: "Membaca data (SELECT)",
+        body:
+          "Jalankan SELECT dengan `query()`, lalu ambil semua baris sebagai array asosiatif dengan `fetchAll(PDO::FETCH_ASSOC)`.",
+        code: '$produk = $pdo->query("SELECT nama, harga FROM produk")->fetchAll(PDO::FETCH_ASSOC);\necho $produk[0]["nama"];',
+      },
+      {
+        heading: "Menulis data (INSERT)",
+        body:
+          "Untuk menyimpan data (terutama dari input pengguna), gunakan prepared statement dengan tanda `?` lalu kirim nilainya lewat `execute([...])`.",
+        code: '$stmt = $pdo->prepare("INSERT INTO produk (nama, harga) VALUES (?, ?)");\n$stmt->execute(["Teh Botol", 5000]);',
+      },
+    ],
+  },
+  {
+    id: "php-keamanan",
+    title: "Prepared Statements & SQL Injection",
+    summary: "Kenapa tanda tanya menyelamatkan databasemu.",
+    tags: ["php", "keamanan", "sql injection"],
+    sections: [
+      {
+        heading: "Query rentan",
+        body:
+          'Menyisipkan input langsung ke string query berbahaya: input `admin\' OR \'1\'=\'1` mengubah logika WHERE dan bisa membuka semua baris tanpa password.',
+        code: '// SALAH — jangan dipakai\n$pdo->query("SELECT * FROM pengguna WHERE nama = \'$nama\'");',
+      },
+      {
+        heading: "Prepared statement",
+        body:
+          "Dengan `prepare()` + `?`, driver database mengirim struktur query TERPISAH dari datanya. Input seberbahaya apa pun hanya dianggap sebagai teks biasa — injeksi tidak mungkin.",
+        code: '$stmt = $pdo->prepare("SELECT nama FROM pengguna WHERE nama = ? AND sandi = ?");\n$stmt->execute([$nama, $sandi]);\n$user = $stmt->fetch();',
+      },
+    ],
+  },
+  {
+    id: "php-fullstack",
+    title: "API JSON & Integrasi Full-Stack",
+    summary: "Menghubungkan JavaScript di browser dengan PHP di server.",
+    tags: ["php", "json", "fetch", "fullstack"],
+    sections: [
+      {
+        heading: "Endpoint JSON",
+        body:
+          'Satu skrip PHP dapat melayani halaman HTML DAN data JSON. Tentukan header content-type, `echo json_encode($data)`, lalu `exit` agar tidak ada HTML tambahan.',
+        code: 'if (($_GET["action"] ?? "") === "produk") {\n  header("Content-Type: application/json");\n  echo json_encode($produk);\n  exit;\n}',
+      },
+      {
+        heading: "Fetch dari frontend",
+        body:
+          "JavaScript di browser meminta data tanpa reload: `fetch('index.php?action=produk')` → `res.json()` → render ke DOM. Inilah pola client-server aplikasi modern.",
+        code: 'fetch("index.php?action=produk")\n  .then(function (res) { return res.json(); })\n  .then(function (data) {\n    document.querySelector("#daftar").textContent = data[0].nama;\n  });',
+      },
+    ],
+  },
+];
+
+export const CODEX_ARTICLES: CodexArticle[] = [
+  ...HTML_ARTICLES,
+  ...CSS_ARTICLES,
+  ...JS_ARTICLES,
+  ...PHP_ARTICLES,
+];
 
 export function getCodexArticle(id: string): CodexArticle | undefined {
   return CODEX_ARTICLES.find((article) => article.id === id);

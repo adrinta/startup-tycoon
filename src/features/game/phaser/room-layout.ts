@@ -8,7 +8,7 @@
  * - `gx/gy`  : koordinat sel pada grid isometrik.
  */
 
-export type RoomStage = "garage" | "coworking" | "tower";
+export type RoomStage = "garage" | "coworking" | "tower" | "penthouse";
 
 export type PropBuilder =
   | "desk-monitor"
@@ -37,7 +37,12 @@ export type PropBuilder =
   | "ticker"
   | "gate-robot"
   | "antenna"
-  | "shield-dome";
+  | "shield-dome"
+  | "server-rack-row"
+  | "data-pipes"
+  | "vault-door"
+  | "beacon"
+  | "unicorn-pedestal";
 
 export interface PropDef {
   key: string;
@@ -86,6 +91,15 @@ export const ROOM_PROPS: PropDef[] = [
   { key: "gate-robot", builder: "gate-robot", hook: "tower.robot", gx: 1.3, gy: 1.7, stage: "tower" },
   { key: "antenna", builder: "antenna", hook: "tower.antenna", gx: 4.2, gy: 1.5, stage: "tower" },
   { key: "dome", builder: "shield-dome", hook: "tower.dome", gx: 2.5, gy: 2.5, stage: "tower" },
+
+  // Babak 4 — Data Center & Executive Penthouse (PHP & Database).
+  { key: "rack-row", builder: "server-rack-row", hook: "penthouse.rack", gx: 1.6, gy: 1.2, stage: "penthouse" },
+  { key: "pipes", builder: "data-pipes", hook: "penthouse.pipes", gx: 2.5, gy: 0, stage: "penthouse" },
+  { key: "vault", builder: "vault-door", hook: "penthouse.vault", gx: 0, gy: 2.3, stage: "penthouse" },
+  { key: "data-shelf", builder: "cargo-shelf", hook: "penthouse.shelf", gx: 3.9, gy: 2.6, stage: "penthouse" },
+  { key: "server-shield", builder: "shield-dome", hook: "penthouse.shield", gx: 2.5, gy: 2.5, stage: "penthouse" },
+  { key: "beacon", builder: "beacon", hook: "penthouse.beacon", gx: 0.8, gy: 1.5, stage: "penthouse" },
+  { key: "unicorn", builder: "unicorn-pedestal", hook: "penthouse.unicorn", gx: 1.6, gy: 2.7, stage: "penthouse" },
 
   // Barang toko (tampil di panggung mana pun).
   { key: "plant", builder: "plant", itemId: "tanaman-hias", gx: 0.7, gy: 4.3 },

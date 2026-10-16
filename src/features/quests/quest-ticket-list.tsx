@@ -115,10 +115,10 @@ export function QuestTicketList({
 
         <div className="mt-2 rounded-md border border-dashed border-border/60 px-2.5 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Babak 4: The Unicorn
+            🏁 Tamat
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            Data Center Penthouse & materi PHP — segera hadir.
+            Seluruh empat babak gim telah tersedia. Nantikan konten baru!
           </div>
         </div>
       </div>

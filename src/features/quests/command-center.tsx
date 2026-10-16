@@ -20,6 +20,7 @@ import { EventLoopPanel, type LoopEvent } from "@/features/sandbox/event-loop-pa
 import { PreviewToolbar } from "@/features/sandbox/preview-toolbar";
 import { SandboxFrame } from "@/features/sandbox/sandbox-frame";
 import type { PreviewViewport } from "@/features/sandbox/viewport";
+import { PhpSandboxRunner } from "@/features/php/php-sandbox";
 import { useCloudSync } from "@/features/sync/use-cloud-sync";
 import {
   type ConsoleEntry,
@@ -262,6 +263,10 @@ function QuestWorkspace({
     setConsoleEntries((current) => [...current, { level: "error", text: message }]);
   }, []);
 
+  const handlePhpLog = useCallback((entry: ConsoleEntry) => {
+    setConsoleEntries((current) => [...current, entry]);
+  }, []);
+
   const handleTimeout = useCallback(() => {
     setConsoleEntries((current) => [
       ...current,
@@ -433,35 +438,45 @@ function QuestWorkspace({
           </div>
 
           <TabsContent value="preview" className="min-h-0 flex-1 overflow-hidden">
-            <div className="flex h-full min-h-0 flex-col">
-              <PreviewToolbar
-                viewport={viewport}
-                onViewportChange={setViewport}
-                xray={xrayEnabled}
-                onXrayChange={setXrayEnabled}
-                eventLoop={eventLoopEnabled}
-                onEventLoopChange={setEventLoopEnabled}
-                showEventLoop={quest.phase >= 3}
+            {quest.phase === 4 ? (
+              <PhpSandboxRunner
+                quest={quest}
+                files={files}
+                runToken={runToken}
+                onValidationResult={handleValidationResult}
+                onPhpLog={handlePhpLog}
               />
-              {eventLoopEnabled && <EventLoopPanel events={loopEvents} />}
-              <div className="min-h-0 flex-1">
-                <SandboxFrame
-                  files={files}
-                  objectives={quest.objectives}
-                  runToken={runToken}
-                  timeoutMs={runTimeout}
-                  fullAudit={fullAudit}
+            ) : (
+              <div className="flex h-full min-h-0 flex-col">
+                <PreviewToolbar
                   viewport={viewport}
-                  xrayEnabled={xrayEnabled}
-                  mocks={quest.mocks}
-                  onConsole={handleConsole}
-                  onRuntimeError={handleRuntimeError}
-                  onValidationResult={handleValidationResult}
-                  onTimeout={handleTimeout}
-                  onLoopTimer={handleLoopTimer}
+                  onViewportChange={setViewport}
+                  xray={xrayEnabled}
+                  onXrayChange={setXrayEnabled}
+                  eventLoop={eventLoopEnabled}
+                  onEventLoopChange={setEventLoopEnabled}
+                  showEventLoop={quest.phase >= 3}
                 />
+                {eventLoopEnabled && <EventLoopPanel events={loopEvents} />}
+                <div className="min-h-0 flex-1">
+                  <SandboxFrame
+                    files={files}
+                    objectives={quest.objectives}
+                    runToken={runToken}
+                    timeoutMs={runTimeout}
+                    fullAudit={fullAudit}
+                    viewport={viewport}
+                    xrayEnabled={xrayEnabled}
+                    mocks={quest.mocks}
+                    onConsole={handleConsole}
+                    onRuntimeError={handleRuntimeError}
+                    onValidationResult={handleValidationResult}
+                    onTimeout={handleTimeout}
+                    onLoopTimer={handleLoopTimer}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </TabsContent>
           <TabsContent value="console" className="min-h-0 flex-1 overflow-hidden">
             <ConsolePanel entries={consoleEntries} />

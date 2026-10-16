@@ -172,6 +172,15 @@ const STAGE_PALETTES: Record<
     panelLine: 0xc3d3e4,
     rim: 0xb3c6da,
   },
+  penthouse: {
+    floorA: 0xf8fafc,
+    floorB: 0xe9eef6,
+    floorLine: 0xd8e0ee,
+    leftWall: 0xe9edf5,
+    rightWall: 0xd9e0ec,
+    panelLine: 0xc6cfdf,
+    rim: 0xb6c1d6,
+  },
 };
 
 function depthFor(def: PropDef): number {
@@ -183,7 +192,9 @@ function depthFor(def: PropDef): number {
     def.builder === "wall-clock" ||
     def.builder === "dashboard-screen" ||
     def.builder === "ticker" ||
-    def.builder === "alarm-beacon"
+    def.builder === "alarm-beacon" ||
+    def.builder === "data-pipes" ||
+    def.builder === "vault-door"
   ) {
     return -1;
   }
@@ -470,6 +481,16 @@ export class GarageScene extends Phaser.Scene {
         return this.buildAntenna(def.gx, def.gy);
       case "shield-dome":
         return this.buildShieldDome(def.gx, def.gy);
+      case "server-rack-row":
+        return this.buildRackRow(def.gx, def.gy);
+      case "data-pipes":
+        return this.buildDataPipes(def.gx);
+      case "vault-door":
+        return this.buildVaultDoor(def.gy);
+      case "beacon":
+        return this.buildBeacon(def.gx, def.gy);
+      case "unicorn-pedestal":
+        return this.buildUnicornPedestal(def.gx, def.gy);
       default:
         return null;
     }
@@ -1121,6 +1142,156 @@ export class GarageScene extends Phaser.Scene {
       targets: dome,
       alpha: 0.55,
       duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut",
+    });
+    return c;
+  }
+
+  /* -------------------------- Data Center & Penthouse ------------------------- */
+
+  private buildRackRow(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 78, 24);
+    drawIsoBox(g, 0, 0, 1.35, 0.55, 0, 44, PALETTES.server);
+
+    const box = isoBoxPoints(0, 0, 1.35, 0.55, 0, 44);
+    g.lineStyle(1, 0x475569, 0.8);
+    for (const lift of [10, 20, 30]) {
+      const p1 = ptLerp(box.leftB, box.frontB, 0.08, lift);
+      const p2 = ptLerp(box.leftB, box.frontB, 0.92, lift);
+      g.lineBetween(p1.x, p1.y, p2.x, p2.y);
+    }
+    const ledColors = [0x4ade80, 0x22d3ee, 0x4ade80, 0xfbbf24];
+    for (let row = 0; row < 3; row += 1) {
+      for (let col = 0; col < 4; col += 1) {
+        const p = ptLerp(box.leftB, box.frontB, 0.14 + col * 0.22, 5 + row * 10);
+        g.fillStyle(ledColors[(row + col) % ledColors.length], 1);
+        g.fillCircle(p.x, p.y, 1.6);
+      }
+    }
+    c.add(g);
+    return c;
+  }
+
+  private buildDataPipes(gx: number): Phaser.GameObjects.Container {
+    const c = this.add.container(0, 0);
+    const g = this.add.graphics();
+    const offsets = [-0.8, 0, 0.8];
+    const colors = [0x94a3b8, 0x7dd3fc, 0x475569];
+
+    for (let i = 0; i < offsets.length; i += 1) {
+      const u = gx + offsets[i];
+      const quad = [
+        wallPoint("right", u - 0.09, 8),
+        wallPoint("right", u + 0.09, 8),
+        wallPoint("right", u + 0.09, 80),
+        wallPoint("right", u - 0.09, 80),
+      ];
+      fillQuad(g, quad, colors[i]);
+      const jointA = wallPoint("right", u - 0.12, 40);
+      const jointB = wallPoint("right", u + 0.12, 46);
+      g.lineStyle(3, 0x334155, 0.7);
+      g.lineBetween(jointA.x, jointA.y, jointB.x, jointB.y);
+    }
+
+    const flow = this.add.graphics();
+    const dotColors = [0x22d3ee, 0x34d399, 0xfbbf24];
+    for (let i = 0; i < offsets.length; i += 1) {
+      const p = wallPoint("right", gx + offsets[i], 18 + i * 14);
+      flow.fillStyle(dotColors[i], 1);
+      flow.fillCircle(p.x, p.y, 2.4);
+    }
+
+    c.add([g, flow]);
+    this.tweens.add({ targets: flow, alpha: 0.25, duration: 900, yoyo: true, repeat: -1 });
+    return c.setDepth(-1);
+  }
+
+  private buildVaultDoor(gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(0, 0);
+    const g = this.add.graphics();
+    const center = wallPoint("left", gy, 58);
+
+    const glow = this.add.graphics();
+    glow.fillStyle(0x38bdf8, 0.18);
+    glow.fillCircle(center.x, center.y, 34);
+
+    g.fillStyle(0x475569, 1);
+    g.fillCircle(center.x, center.y, 28);
+    g.lineStyle(3, 0x334155, 1);
+    g.strokeCircle(center.x, center.y, 28);
+    g.fillStyle(0x334155, 1);
+    g.fillCircle(center.x, center.y, 22);
+
+    g.lineStyle(2.5, 0x94a3b8, 0.9);
+    for (let i = 0; i < 4; i += 1) {
+      const angle = (Math.PI / 4) * i;
+      const from = { x: center.x + Math.cos(angle) * 8, y: center.y + Math.sin(angle) * 8 };
+      const to = { x: center.x + Math.cos(angle) * 20, y: center.y + Math.sin(angle) * 20 };
+      g.lineBetween(from.x, from.y, to.x, to.y);
+      g.lineBetween(2 * center.x - from.x, 2 * center.y - from.y, 2 * center.x - to.x, 2 * center.y - to.y);
+    }
+    g.fillStyle(0xcbd5e1, 1);
+    g.fillCircle(center.x, center.y, 6);
+    g.lineStyle(2, 0x0ea5e9, 0.8);
+    g.strokeCircle(center.x, center.y, 12);
+
+    c.add([glow, g]);
+    this.tweens.add({ targets: glow, alpha: 0.5, duration: 1200, yoyo: true, repeat: -1 });
+    return c.setDepth(-1);
+  }
+
+  private buildBeacon(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 30, 12);
+    drawIsoBox(g, 0, 0, 0.42, 0.42, 0, 7, PALETTES.slate);
+    drawIsoBox(g, 0, 0, 0.1, 0.1, 7, 38, PALETTES.metal);
+
+    g.fillStyle(0xfbbf24, 0.16);
+    g.fillTriangle(0, -50, -22, -78, 22, -78);
+
+    const orb = this.add.graphics();
+    orb.fillStyle(0xfbbf24, 0.3);
+    orb.fillCircle(0, -50, 10);
+    orb.fillStyle(0xfde68a, 1);
+    orb.fillCircle(0, -50, 5);
+
+    c.add([g, orb]);
+    this.tweens.add({
+      targets: orb,
+      scale: 1.15,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut",
+    });
+    return c;
+  }
+
+  private buildUnicornPedestal(gx: number, gy: number): Phaser.GameObjects.Container {
+    const c = this.add.container(isoX(gx, gy), isoY(gx, gy));
+    const g = this.add.graphics();
+    shadow(g, 0, 2, 44, 16);
+    drawIsoBox(g, 0, 0, 0.6, 0.6, 0, 18, {
+      top: 0xe2e8f0,
+      left: 0xb8c4d4,
+      right: 0x9aa9bc,
+    });
+
+    const glow = this.add.graphics();
+    glow.fillStyle(0xfbbf24, 0.22);
+    glow.fillCircle(0, -46, 18);
+
+    const unicorn = this.add.text(0, -46, "🦄", { fontSize: "26px" }).setOrigin(0.5);
+    c.add([glow, unicorn]);
+    this.tweens.add({
+      targets: unicorn,
+      y: -50,
+      duration: 1100,
       yoyo: true,
       repeat: -1,
       ease: "Sine.InOut",

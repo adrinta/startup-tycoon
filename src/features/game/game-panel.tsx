@@ -70,7 +70,14 @@ export function GamePanel({
       ownedItemIds,
       activeQuestTitle,
       activeQuestHint,
-      stage: activeQuestPhase >= 3 ? "tower" : activeQuestPhase >= 2 ? "coworking" : "garage",
+      stage:
+        activeQuestPhase >= 4
+          ? "penthouse"
+          : activeQuestPhase >= 3
+            ? "tower"
+            : activeQuestPhase >= 2
+              ? "coworking"
+              : "garage",
     }),
     [completedHooks, ownedItemIds, activeQuestTitle, activeQuestHint, activeQuestPhase],
   );

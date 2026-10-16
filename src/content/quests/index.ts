@@ -1,12 +1,16 @@
 import { PHASE_1_QUESTS } from "@/content/quests/phase1";
 import { PHASE_2_QUESTS } from "@/content/quests/phase2";
 import { PHASE_3_QUESTS } from "@/content/quests/phase3";
+import { PHASE_4_QUESTS } from "@/content/quests/phase4";
 import type { Quest } from "@/content/quests/schema";
 
-/** Registry seluruh quest yang sudah tersedia. Babak 4 menyusul. */
-export const QUESTS: Quest[] = [...PHASE_1_QUESTS, ...PHASE_2_QUESTS, ...PHASE_3_QUESTS].sort(
-  (a, b) => a.order - b.order,
-);
+/** Registry seluruh quest. */
+export const QUESTS: Quest[] = [
+  ...PHASE_1_QUESTS,
+  ...PHASE_2_QUESTS,
+  ...PHASE_3_QUESTS,
+  ...PHASE_4_QUESTS,
+].sort((a, b) => a.order - b.order);
 
 export function getQuestById(id: string): Quest | undefined {
   return QUESTS.find((quest) => quest.id === id);
